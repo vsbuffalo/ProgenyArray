@@ -24,4 +24,5 @@ setClass("ProgenyArray",
 										possible_fathers="integer",
 										mothers="integer",
 										fathers="integer",
+										fathers_lle="list",
                     samples="character"))

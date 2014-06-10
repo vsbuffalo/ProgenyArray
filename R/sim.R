@@ -46,23 +46,6 @@ createProgenyArrayWithSelfing <- function(x, ehet=0, ehom=0, nprogeny=50) {
 #}
 #
 
-inferFather <- function(progeny, mother, fathers, ehet=0.6, ehom=0.1) {
-  tm <- transmissionMatrix(ehet, ehom)
-
-  # this function gathers all of the probabilities from our transmission matrix,
-  # for a particular father, given by their index in fathers.
-  tmprob <- function(fi) tm[cbind(fathers[, fi]+1L, progeny+1L, mother+1L)]
-
-  # calculate all of the father's transmission probabilities for each locus
-  transmission_probs <- lapply(seq_len(ncol(fathers)), tmprob)
-
-  # calculate log-likelihood under the assumption that all loci are independent
-
-  lle <- sapply(transmission_probs, function(x) sum(log(x)))
-  list(father=which.max(lle), ll=max(lle), all_lle=lle)
-}
-
-
 ## testing
 tm <- transmissionMatrix()
 x <- createDiploidSample(100, 1000)
