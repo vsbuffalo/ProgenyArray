@@ -1,0 +1,15 @@
+Package: ProgenyArray
+Title: Some statistical genetics for progeny array experiments
+Version: 0.1
+Authors@R: 'Vince Buffalo <vsbuffaloAAAAA@gmail.com> [aut, cre]'
+Description: This package contains classes for storing progeny array genotyping
+    data, and some statistical genetics methods.
+Depends:
+    R (>= 3.1.0),
+    GenomicRanges
+Imports:
+    tasselr,
+    methods,
+    Biobase
+License: BSD
+LazyData: true
