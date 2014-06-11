@@ -12,23 +12,14 @@
 #' @param ref a character vector of reference loci
 #' @param alt a \S4Class{CharacterList} of alternate loci
 #' @param a character vector of sample names
-ProgenyArray <- function(geno, loci=GRanges(), ref=character(),
-                         alt=CharacterList(), samples=character()) {
-	obj <- new("ProgenyArray", genotypes=geno, ranges=loci,
-						 ref=ref, alt=alt, samples=samples)
+ProgenyArray <- function(progeny, parents, mothers=integer(), loci=GRanges(),
+                         ref=character(), alt=CharacterList(),
+                         samples=character()) {
+	obj <- new("ProgenyArray", progeny=progeny, parents=parents,
+             mothers=mothers, ranges=loci, ref=ref, alt=alt,
+             samples=samples)
 	obj
 }
-
-#' Coercion method to create a ProgenyArray object from GBS data from Tassel.
-#' @name as
-#'
-#' @param from a TasselHDF5 object
-#' @export
-#'
-setAs("TasselHDF5", "ProgenyArray", function(from) {
-	new("ProgenyArray", genotypes=from@genotypes, ranges=from@ranges,
-			ref=tasselr:::ref(from), alt=tasselr:::alt(from), samples=from@samples)
-})
 
 
 #' Pretty-print a ProgenyArray object
@@ -39,29 +30,41 @@ setAs("TasselHDF5", "ProgenyArray", function(from) {
 setMethod("show",
           c(object="ProgenyArray"),
           function(object) {
-            cat(sprintf("ProgenyArray object\n%d loci x %d samples\n",
-                        nrow(object@genotypes), ncol(object@genotypes)))
+            cat(sprintf("ProgenyArray object: %d loci, %d parents, %d progeny\n",
+                        nrow(object@progeny), ncol(object@parents),
+                        ncol(object@progeny)))
             cat(sprintf("Number of chromosomes: %d\nObject size: %s Mb\n",
                         length(seqlevels(object@ranges)),
                         round(object.size(object)/1024^2, 3)))
             numOrNA <- function(x) ifelse(length(x) == 0, NA, length(x))
             nfathers <- numOrNA(object@fathers)
-            nposs_fathers <- numOrNA(object@possible_fathers)
+            nparents <- numOrNA(object@parents)
             nmothers <- numOrNA(object@mothers)
             nprogeny <- numOrNA(object@progeny)
-            cat(sprintf("Number of possible fathers: %d\n", nposs_fathers))
+            cat(sprintf("Number of progeny: %d\n", nprogeny))
+            cat(sprintf("Number of parents: %d\n", nparents))
             cat(sprintf("Number of fathers: %d\n", nfathers))
             cat(sprintf("Number of mothers: %d\n", nmothers))
-            cat(sprintf("Number of progeny: %d\n", nprogeny))
           })
-#' Accessor for possible fathers in a ProgenyArray object
+
+#' Accessor for parent genotypes
 #'
 #' @param x a ProgenyArray object
 #' @export
-setMethod("possibleFathers",
+setMethod("parentGenotypes",
           c(x="ProgenyArray"),
           function(x) {
-            return(x@possible_fathers)
+            return(x@parents)
+          })
+
+#' Accessor for progeny genotypes
+#'
+#' @param x a ProgenyArray object
+#' @export
+setMethod("progenyGenotypes",
+          c(x="ProgenyArray"),
+          function(x) {
+            return(x@progeny)
           })
 
 #' Accessor for fathers in a ProgenyArray object
@@ -82,27 +85,6 @@ setMethod("mothers",
           c(x="ProgenyArray"),
           function(x) {
             return(x@mothers)
-          })
-
-#' Accessor for progeny in a ProgenyArray object
-#'
-#' @param x a ProgenyArray object
-#' @export
-setMethod("progeny",
-          c(x="ProgenyArray"),
-          function(x) {
-            return(x@progeny)
-          })
-
-
-#' Accessor for genotype information from a ProgenyArray object
-#'
-#' @param x a ProgenyArray object
-#' @export
-setMethod("geno",
-          c(x="ProgenyArray"),
-          function(x) {
-            return(x@genotypes)
           })
 
 #' Accessor for genomic ranges from a ProgenyArray object
@@ -165,18 +147,6 @@ setReplaceMethod("fathers", "ProgenyArray", function(object, value) {
 	object@fathers <- value
 	return(object)
 })
-
-#' Set method for possibleFathers
-#'
-#' @param object
-#' @param value
-#' @export
-#' @name set-methods
-setReplaceMethod("possibleFathers", "ProgenyArray", function(object, value) {
-	object@possible_fathers <- value
-	return(object)
-})
-
 
 #' Set method for mothers
 #'

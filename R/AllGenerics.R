@@ -3,12 +3,6 @@
 # Distributed under terms of the BSD license.
 
 
-#' Accessor for genotype matrix
-#'
-setGeneric("geno", function(x) {
-           standardGeneric("geno")
-             })
-
 #' Accessor for alternate alleles
 #'
 setGeneric("alt", function(x, as_char=TRUE) {
@@ -33,16 +27,16 @@ setGeneric("mothers", function(x, names=TRUE) {
            standardGeneric("mothers")
              })
 
-#' Accessor for progeny (returning indices or names)
+#' Accessor for progenyGenotypes
 #'
-setGeneric("progeny", function(x, names=TRUE) {
-           standardGeneric("progeny")
+setGeneric("progenyGenotypes", function(x, names=TRUE) {
+           standardGeneric("progenyGenotypes")
              })
 
-#' Accessor for possibleFathers (returning indices or names)
+#' Accessor for parentGenotypes
 #'
-setGeneric("possibleFathers", function(x, names=TRUE) {
-           standardGeneric("possibleFathers")
+setGeneric("parentGenotypes", function(x, names=TRUE) {
+           standardGeneric("parentGenotypes")
              })
 
 #' Accessor for inferFathers
@@ -57,10 +51,10 @@ setGeneric("progeny<-", function(object, value) {
            standardGeneric("progeny<-")
              })
 
-#' Setter for possibleFathers
+#' Setter for parents
 #'
-setGeneric("possibleFathers<-", function(object, value) {
-           standardGeneric("possibleFathers<-")
+setGeneric("parents<-", function(object, value) {
+           standardGeneric("parents<-")
              })
 
 

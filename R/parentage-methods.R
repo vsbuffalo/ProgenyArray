@@ -2,8 +2,6 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
-#MT <- matrix(c(0, 0.5, 1), ncol=1)
-
 MendelianTransmissionList <- function(x) {
     # Mendelian transition matrix, in list notation for readability
     # TODO: we can build this up programmatically using Kronecker products.
@@ -79,10 +77,10 @@ inferFather <- function(progeny, mother, fathers, tmatrix) {
 
 #' Check if is valid: all progeny have mothers in genotype matrix.
 checkValidProgenyArray <- function(x) {
-  if (length(mothers(x)) != length(progeny(x)))
+  if (length(mothers(x)) != ncol(progenyGenotypes(x)))
     stop("mothers vector must be same length as progeny vector")
   if (any(is.na(mothers(x))))
-    stop("missing mothers not supported")
+    stop("mothers cannot be NA")
 }
 
 #' Infer Fathers for all progeny when the mother is known
@@ -92,15 +90,15 @@ setMethod("inferFathers", c(x="ProgenyArray"),
 					function(x, ehet, ehom) {
             checkValidProgenyArray(x)
 						tmatrix <- MendelianTransmissionWithError(ehet, ehom)
-						fathers_lle <- vector('list', length(progeny(x)))
-            g <- geno(x)
-						kids <- progeny(x)
-						moms <- mothers(x)
-						dads <- g[, possibleFathers(x)]
-						for (i in seq_along(kids)) {
-							kid <- g[, kids[i]]
-							mom <- g[, moms[i]]
-							fathers_lle[[i]] <- inferFather(kid, mom, dads, tmatrix)
+						fathers_lle <- vector('list', ncol(progenyGenotypes((x))))
+            # extract the progeny, mothers indices, and father genotypes
+						parents <- parentGenotypes(x)
+            moms_i <- mothers(x)
+            kids <- progenyGenotypes(x)
+						for (i in seq_len(ncol(kids))) {
+							kid <- kids[, i]
+							mom <- parents[, moms_i[i]]
+							fathers_lle[[i]] <- inferFather(kid, mom, parents, tmatrix)
 						}
 						x@fathers <- sapply(fathers_lle, function(x) x[[1]])
             x@fathers_lle <- fathers_lle
