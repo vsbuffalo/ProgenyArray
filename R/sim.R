@@ -37,38 +37,4 @@ createProgenyArrayWithSelfing <- function(x, ehet=0, ehom=0, nprogeny=50) {
   list(progeny=progeny, mom_i=mom_i, dad_i=dad_i)
 }
 
-#createProgenyArrayWithSelfing <- function(x, nprogeny=50) {
-#  # create progeny array for a single mother from a population x
-#  mom_i <- sample(seq_len(ncol(x)), 1)
-#  dad_i <- sample(seq_len(ncol(x)), nprogeny, replace=TRUE)
-#  progeny <- do.call(cbind, lapply(dad_i, function(di) mate(x[, mom_i], x[, di])))
-#  list(progeny=progeny, mom_i=mom_i, dad_i=dad_i)
-#}
-#
-
-## testing
-tm <- transmissionMatrix()
-x <- createDiploidSample(100, 1000)
-
-# with no errors
-prog <- createProgenyArrayWithSelfing(x)
-correct <- logical(length(prog$dad_i))
-results <- vector("list", length(prog$dad_i))
-mother <- x[, prog$mom_i]
-for (i in seq_len(ncol(prog$progeny))) {
-  res <- inferFather(prog$progeny[, i], mother, x, 0.1, 0.1)
-  results[[i]] <- res
-  correct[i] <- res$father == prog$dad_i[i]
-}
-
-# with errors
-prog <- createProgenyArrayWithSelfing(x, 0.6, 0.1)
-correct <- logical(length(prog$dad_i))
-results <- vector("list", length(prog$dad_i))
-mother <- x[, prog$mom_i]
-for (i in seq_len(ncol(prog$progeny))) {
-  res <- inferFather(prog$progeny[, i], mother, x, 0.6, 0.1)
-  results[[i]] <- res
-  correct[i] <- res$father == prog$dad_i[i]
-}
 

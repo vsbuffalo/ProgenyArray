@@ -4,23 +4,30 @@
 
 #MT <- matrix(c(0, 0.5, 1), ncol=1)
 
-# Mendelian transition matrix, in list notation for readability
-# TODO: we can build this up programmatically using Kronecker products.
-# first dimension (list element): mom's genotype
-# second dimension: alleged dad's genotype
-# third dimension: progeny genotype
-MT_list <- list(
-           "0"=matrix(c(1, 1/2, 0, 0, 1/2, 1, 0, 0, 0),
-                      ncol=3),
-           "1"=matrix(c(1/2, 1/4, 0, 1/2, 1/2, 1/2, 0, 1/4, 1/2),
-                      ncol=3),
-           "2"=matrix(c(0, 0, 0, 1, 1/2, 0, 0, 1/2, 1),
-                      ncol=3))
+MendelianTransmissionList <- function(x) {
+    # Mendelian transition matrix, in list notation for readability
+    # TODO: we can build this up programmatically using Kronecker products.
+    # first dimension (list element): mom's genotype
+    # second dimension: alleged dad's genotype
+    # third dimension: progeny genotype
+    MT_list <- list(
+               "0"=matrix(c(1, 1/2, 0, 0, 1/2, 1, 0, 0, 0),
+                          ncol=3),
+               "1"=matrix(c(1/2, 1/4, 0, 1/2, 1/2, 1/2, 0, 1/4, 1/2),
+                          ncol=3),
+               "2"=matrix(c(0, 0, 0, 1, 1/2, 0, 0, 1/2, 1),
+                          ncol=3))
+    return(MT_list)
+}
 
-# convert to array. Now dimensions are:
-# (1) father, (2) progeny, (3) mother
-MT <- array(unlist(MT_list), dim=c(3, 3, 3))
-stopifnot(all(sapply(1:3, function(i) MT_list[[i]] == MT[, , i])))
+MendelianTransmissionMatrix <- function() {
+  # convert to array. Now dimensions are:
+  # (1) father, (2) progeny, (3) mother
+  m <- MendelianTransmissionList()
+  MT <- array(unlist(m), dim=c(3, 3, 3))
+  stopifnot(all(sapply(1:3, function(i) m[[i]] == MT[, , i])))
+  return(MT)
+}
 
 #' Create a genotyping error matrix.
 #'
@@ -47,8 +54,9 @@ genotypingErrorMatrix <- function(ehet=0.6, ehom=0.1) {
 #' @param ehet the probability that a heterozygous genotype is incorrect
 #' @param ehom the probability that a homozygous genotype is incorrect
 #' @export
-transmissionMatrix <- function(ehet=0.6, ehom=0.1) {
-  out <- lapply(MT_list, function(x) x %*% genotypingErrorMatrix(ehet, ehom))
+MendelianTransmissionWithError <- function(ehet=0.6, ehom=0.1) {
+  out <- lapply(MendelianTransmissionList(),
+                function(x) x %*% genotypingErrorMatrix(ehet, ehom))
   array(unlist(out), dim=c(3, 3, 3))
 }
 
@@ -69,11 +77,33 @@ inferFather <- function(progeny, mother, fathers, tmatrix) {
   list(father=lle_order[1], ll=lle[lle_order[1]], delta=delta, all_lle=lle)
 }
 
+#' Check if is valid: all progeny have mothers in genotype matrix.
+checkValidProgenyArray <- function(x) {
+  if (length(mothers(x)) != length(progeny(x)))
+    stop("mothers vector must be same length as progeny vector")
+  if (any(is.na(mothers(x))))
+    stop("missing mothers not supported")
+}
+
 #' Infer Fathers for all progeny when the mother is known
 #'
 #' @export
 setMethod("inferFathers", c(x="ProgenyArray"),
 					function(x, ehet, ehom) {
-						tmatrix <- transmissionMatrix(ehet, ehom)
+            checkValidProgenyArray(x)
+						tmatrix <- MendelianTransmissionWithError(ehet, ehom)
+						fathers_lle <- vector('list', length(progeny(x)))
+            g <- geno(x)
+						kids <- progeny(x)
+						moms <- mothers(x)
+						dads <- g[, possibleFathers(x)]
+						for (i in seq_along(kids)) {
+							kid <- g[, kids[i]]
+							mom <- g[, moms[i]]
+							fathers_lle[[i]] <- inferFather(kid, mom, dads, tmatrix)
+						}
+						x@fathers <- sapply(fathers_lle, function(x) x[[1]])
+            x@fathers_lle <- fathers_lle
+						return(x)
 })
 

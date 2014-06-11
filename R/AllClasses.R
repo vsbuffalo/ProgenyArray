@@ -16,13 +16,27 @@
 #'
 #' @exportClass ProgenyArray
 setClass("ProgenyArray",
-         slots=list(ranges="GRanges",
-                    ref="character",
-                    alt="CharacterList",
-                    genotypes="matrix",
-										progeny="integer",
-										possible_fathers="integer",
-										mothers="integer",
-										fathers="integer",
-										fathers_lle="list",
-                    samples="character"))
+         representation=representation(ranges="GRanges",
+                                       ref="character",
+                                       alt="CharacterList",
+                                       genotypes="matrix",
+                                       progeny="integer",
+                                       possible_fathers="integer",
+                                       mothers="integer",
+                                       fathers="integer",
+                                       fathers_lle="list",
+                                       samples="character"),
+         prototype=prototype(ranges=GRanges(),
+                             ref=character(),
+                             alt=CharacterList(),
+                             progeny=integer(),
+                             possible_fathers=integer(),
+                             mothers=integer(),
+                             fathers=integer(),
+                             fathers_lle=list(),
+                             samples=character()),
+         validity=function(object) {
+           if (length(mothers(object) != length(progeny)))
+             stop("mothers vector must be same length as progeny vector")
+         })
+

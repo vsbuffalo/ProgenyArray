@@ -45,3 +45,34 @@ setGeneric("possibleFathers", function(x, names=TRUE) {
            standardGeneric("possibleFathers")
              })
 
+#' Accessor for inferFathers
+#'
+setGeneric("inferFathers", function(x, ehet, ehom) {
+           standardGeneric("inferFathers")
+             })
+
+#' Setter for progeny
+#'
+setGeneric("progeny<-", function(object, value) {
+           standardGeneric("progeny<-")
+             })
+
+#' Setter for possibleFathers
+#'
+setGeneric("possibleFathers<-", function(object, value) {
+           standardGeneric("possibleFathers<-")
+             })
+
+
+#' Accessor for mothers
+#'
+setGeneric("mothers<-", function(object, value) {
+           standardGeneric("mothers<-")
+             })
+
+#' Accessor for fathers
+#'
+setGeneric("fathers<-", function(object, value) {
+           standardGeneric("fathers<-")
+             })
+

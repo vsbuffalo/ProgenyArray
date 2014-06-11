@@ -1,4 +1,7 @@
-# ProgenyArray - Class and methods for working with genotyping data from a progeny array
+# ProgenyArray
+
+ProgenyArray includes classes and methods for working with genotyping data from
+a progeny array
 
 This package implements some simple classes for storing data from a progeny
 array (half-sib) experiment, as well as some statistical genetics methods to do
