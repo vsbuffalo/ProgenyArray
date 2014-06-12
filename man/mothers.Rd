@@ -7,5 +7,7 @@ mothers(x, names = TRUE)
 }
 \description{
 Accessor for mothers (returning indices or names)
+
+Set method for mothers
 }
 

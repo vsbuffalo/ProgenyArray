@@ -5,7 +5,8 @@
 \alias{ProgenyArray-package}
 \title{ProgenyArray.}
 \usage{
-ProgenyArray(geno, loci, ref, alt, samples)
+ProgenyArray(progeny, parents, mothers = integer(), loci = GRanges(),
+  ref = character(), alt = CharacterList(), samples = character())
 }
 \arguments{
 \item{geno}{a genotype matrix}

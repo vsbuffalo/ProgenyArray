@@ -15,11 +15,9 @@ An S4 class that stores genotyping data from a progeny array design.
 
 \item{\code{alt}}{alternate alleles}
 
-\item{\code{genotypes}}{a matrix of bialleic genotypes}
+\item{\code{progeny}}{a matrix of bialleic progeny genotypes}
 
-\item{\code{progeny}}{an integer vector indicating which samples are progeny}
-
-\item{\code{possible_fathers}}{an integer vector indicating which samples are possible fathers}
+\item{\code{parents}}{a matrix of bialleic parents genotypes}
 
 \item{\code{mothers}}{integer vector indicating the mother of each progeny}
 

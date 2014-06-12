@@ -7,34 +7,40 @@
 #' @slot ranges a \code{GenomicRanges} object of loci
 #' @slot ref reference alleles
 #' @slot alt alternate alleles
-#' @slot progeny a matrix of bialleic progeny genotypes
-#' @slot parents a matrix of bialleic parents genotypes
+#' @slot progeny_geno a matrix of bialleic progeny genotypes
+#' @slot parents_geno a matrix of bialleic parents genotypes
 #' @slot mothers integer vector indicating the mother of each progeny
 #' @slot fathers integer vector indicating the father of each progeny
-#' @slot samples sample names
+#' @slot progeny_samples sample names of progeny
+#' @slot parents_samples sample names of parents
+#' @slot complete_loci which loci are complete in the parents
 #'
 #' @exportClass ProgenyArray
 setClass("ProgenyArray",
          representation=representation(ranges="GRanges",
                                        ref="character",
                                        alt="CharacterList",
-                                       progeny="matrix",
-                                       parents="matrix",
+                                       progeny_geno="matrix",
+                                       parents_geno="matrix",
                                        mothers="integer",
                                        fathers="integer",
                                        fathers_lle="list",
-                                       samples="character"),
+                                       progeny_samples="character",
+                                       parents_samples="character",
+																			 complete_loci="integer"),
          prototype=prototype(ranges=GRanges(),
                              ref=character(),
                              alt=CharacterList(),
                              mothers=integer(),
                              fathers=integer(),
                              fathers_lle=list(),
-                             samples=character()),
+                             progeny_samples=character(),
+                             parents_samples=character(),
+														 complete_loci=integer()),
          validity=function(object) {
-           if (nrow(object@progeny) != nrow(object@parents))
-             stop("inconsistent number of loci: nrow(progeny) != nrow(parents)")
-           if (length(object@mothers) != ncol(object@progeny))
-             stop("mothers vector must be same length as progeny vector")
+           if (nrow(object@progeny_geno) != nrow(object@parents_geno))
+             stop("number of progeny loci must equal number of parent loci")
+           if (length(object@mothers) != ncol(object@progeny_geno))
+             stop("mothers vector must be equal length as progeny genotype matrix")
          })
 

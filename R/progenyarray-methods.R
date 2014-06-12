@@ -2,22 +2,32 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
+#' Return which parents are complete
+whichParentsComplete <- function(x) {
+	stopifnot(is(x, "ProgenyArray"))
+	which(apply(!is.na(x@parents), 1, all))
+})
+
 #' Constructor new ProgenyArray object.
 #'
 #' Create a new ProgenyArray object for storing genotyping and other data from
 #' a progeny array experiment.
 #'
-#' @param geno a genotype matrix
-#' @param loci a \S4Class{GRanges} object of loci
+#' @param progeny_geno
+#' @param parents_geno
+#' @param loci a \code{GRanges} object of loci
 #' @param ref a character vector of reference loci
-#' @param alt a \S4Class{CharacterList} of alternate loci
-#' @param a character vector of sample names
-ProgenyArray <- function(progeny, parents, mothers=integer(), loci=GRanges(),
-                         ref=character(), alt=CharacterList(),
-                         samples=character()) {
-	obj <- new("ProgenyArray", progeny=progeny, parents=parents,
+#' @param alt a \code{CharacterList} of alternate loci
+#' @param progeny_samples sample names of progeny
+#' @param parents_samples sample names of parents
+#' @export
+ProgenyArray <- function(progeny_geno, parents_geno, mothers=integer(),
+												 loci=GRanges(), ref=character(), alt=CharacterList(),
+                         parents_samples=character(), progeny_samples=character()) {
+	obj <- new("ProgenyArray", progeny_geno=progeny_geno, parents_geno=parents_geno,
              mothers=mothers, ranges=loci, ref=ref, alt=alt,
-             samples=samples)
+             progeny_samples=progeny_samples, parents_samples=parents_samples)
+	obj@complete_loci <- whichParentsComplete(parents_geno)
 	obj
 }
 
@@ -31,21 +41,35 @@ setMethod("show",
           c(object="ProgenyArray"),
           function(object) {
             cat(sprintf("ProgenyArray object: %d loci, %d parents, %d progeny\n",
-                        nrow(object@progeny), ncol(object@parents),
-                        ncol(object@progeny)))
+                        nrow(object@progeny_geno), ncol(object@parents_geno),
+                        ncol(object@progeny_geno)))
             cat(sprintf("Number of chromosomes: %d\nObject size: %s Mb\n",
                         length(seqlevels(object@ranges)),
                         round(object.size(object)/1024^2, 3)))
-            numOrNA <- function(x) ifelse(length(x) == 0, NA, length(x))
+						# convience function for getting lengths
+						numOrNA <- function(x) {
+							if (length(x) == 0)
+								return(NA)
+							if (is.null(dim(x)))
+								return(length(x))
+							return(ncol(x))
+						}
             nfathers <- numOrNA(object@fathers)
-            nparents <- numOrNA(object@parents)
+            nparents <- numOrNA(object@parents_geno)
             nmothers <- numOrNA(object@mothers)
-            nprogeny <- numOrNA(object@progeny)
+            nprogeny <- numOrNA(object@progeny_geno)
             cat(sprintf("Number of progeny: %d\n", nprogeny))
             cat(sprintf("Number of parents: %d\n", nparents))
             cat(sprintf("Number of fathers: %d\n", nfathers))
             cat(sprintf("Number of mothers: %d\n", nmothers))
+						cat(sprintf("Proportion missing:\n  progeny: %0.3f\n  parents: %0.3f\n",
+												sum(is.na(x@progeny_geno))/length(x@progeny_geno),
+												sum(is.na(x@parents_geno))/length(x@parents_geno)))
+						cat(sprintf("Number of complete parental loci: %d\n",
+												length(x@complete_loci)))
+
           })
+
 
 #' Accessor for parent genotypes
 #'
@@ -54,7 +78,7 @@ setMethod("show",
 setMethod("parentGenotypes",
           c(x="ProgenyArray"),
           function(x) {
-            return(x@parents)
+            return(x@parents_geno)
           })
 
 #' Accessor for progeny genotypes
@@ -64,7 +88,7 @@ setMethod("parentGenotypes",
 setMethod("progenyGenotypes",
           c(x="ProgenyArray"),
           function(x) {
-            return(x@progeny)
+            return(x@progeny_geno)
           })
 
 #' Accessor for fathers in a ProgenyArray object
@@ -126,48 +150,63 @@ setMethod("ref",
             return(TASSELL_ALLELES[x@ref])
           })
 
-
-#' Accessor for samples from a ProgenyArray object
+#' Return progeny sample names
 #'
-#' @param object a ProgenyArray object
 #' @export
-setMethod("samples",
-          c(object="ProgenyArray"),
-          function(object) {
-						return(object@samples)
-          })
+setMethod("progenySamples", "ProgenyArray", function(object) {
+	object@progeny_samples
+})
+
+#' Return parent sample names
+#'
+#' @export
+setMethod("parentSamples", "ProgenyArray", function(object) {
+	object@parents_samples
+})
+
 
 #' Set method for fathers
 #'
-#' @param object
-#' @param value
+#' @name fathers
 #' @export
-#' @name set-methods
 setReplaceMethod("fathers", "ProgenyArray", function(object, value) {
+  if (length(value) != ncol(object@progeny))
+		stop("length of value must be same as number of progeny")
 	object@fathers <- value
 	return(object)
 })
 
 #' Set method for mothers
 #'
-#' @param object
-#' @param value
+#' @name mothers
 #' @export
-#' @name set-methods
 setReplaceMethod("mothers", "ProgenyArray", function(object, value) {
+	if (length(value) != ncol(object@progeny_geno))
+		stop("length of value must be same as number of progeny")
 	object@mothers <- value
 	return(object)
 })
 
 
-#' Set method for progeny
+#' Set method for parents sample names
 #'
-#' @param object
-#' @param value
+#' @name parentSamples
 #' @export
-#' @name set-methods
-setReplaceMethod("progeny", "ProgenyArray", function(object, value) {
-	object@progeny <- value
+setReplaceMethod("parentSamples", "ProgenyArray", function(object, value) {
+	if (length(value) != ncol(object@parents_geno))
+		stop("length of value must be same as number of parents")
+	object@parents_samples <- value
 	return(object)
 })
 
+
+#' Set method for progeny sample names
+#'
+#' @name progenySamples
+#' @export
+setReplaceMethod("progenySamples", "ProgenyArray", function(object, value) {
+	if (length(value) != ncol(object@progeny_geno))
+		stop("length of value must be same as number of progeny")
+	object@progeny_samples <- value
+	return(object)
+})

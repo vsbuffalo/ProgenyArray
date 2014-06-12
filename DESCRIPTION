@@ -8,8 +8,10 @@ Depends:
     R (>= 3.1.0),
     GenomicRanges
 Imports:
+    Rcpp,
     tasselr,
     methods,
     Biobase
+LinkingTo: Rcpp
 License: BSD
 LazyData: true

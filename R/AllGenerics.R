@@ -41,20 +41,20 @@ setGeneric("parentGenotypes", function(x, names=TRUE) {
 
 #' Accessor for inferFathers
 #'
-setGeneric("inferFathers", function(x, ehet, ehom) {
+setGeneric("inferFathers", function(x, ehet, ehom, verbose=FALSE) {
            standardGeneric("inferFathers")
              })
 
-#' Setter for progeny
+#' Setter for progeny sample names
 #'
-setGeneric("progeny<-", function(object, value) {
-           standardGeneric("progeny<-")
+setGeneric("progenySamples<-", function(object, value) {
+           standardGeneric("progenySamples<-")
              })
 
-#' Setter for parents
+#' Setter for parents sample names
 #'
-setGeneric("parents<-", function(object, value) {
-           standardGeneric("parents<-")
+setGeneric("parentSamples<-", function(object, value) {
+           standardGeneric("parentsSamples<-")
              })
 
 

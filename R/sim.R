@@ -1,6 +1,5 @@
 ## sim.R -- simulation of progeny array data
 
-
 createDiploidSample  <- function(n, nsites) {
 	# this is a bit of an approximation: create SFS, and then generate site
 	# frequencies from that.

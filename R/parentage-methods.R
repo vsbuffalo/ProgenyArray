@@ -61,6 +61,11 @@ MendelianTransmissionWithError <- function(ehet=0.6, ehom=0.1) {
 #' Internal function for inferring father using MLE methods
 #'
 inferFather <- function(progeny, mother, fathers, tmatrix) {
+	# first check that fathers is not dimensionless - these means there's only
+	# one loci
+	if (is.null(dim(fathers)))
+		return(list(father=NA, ll=NA, delta=NA, all_lle=NA, nloci=NA))
+
   # this function gathers all of the probabilities from our transmission matrix,
   # for a particular father, given by their index in fathers.
   tmprob <- function(fi) tmatrix[cbind(fathers[, fi]+1L, progeny+1L, mother+1L)]
@@ -69,36 +74,51 @@ inferFather <- function(progeny, mother, fathers, tmatrix) {
   transmission_probs <- lapply(seq_len(ncol(fathers)), tmprob)
 
   # calculate log-likelihood under the assumption that all loci are independent
+	# FIXME handle NAs
   lle <- sapply(transmission_probs, function(x) sum(log(x)))
   lle_order <- order(lle, decreasing=TRUE)
   delta <- lle[lle_order[1]] - lle[lle_order[2]]
-  list(father=lle_order[1], ll=lle[lle_order[1]], delta=delta, all_lle=lle)
+  list(father=lle_order[1], ll=lle[lle_order[1]],
+			 delta=delta, all_lle=lle, nloci=length(progeny))
 }
 
 #' Check if is valid: all progeny have mothers in genotype matrix.
 checkValidProgenyArray <- function(x) {
-  if (length(mothers(x)) != ncol(progenyGenotypes(x)))
+  if (length(mothers(x)) != ncol(x@progeny_geno))
     stop("mothers vector must be same length as progeny vector")
   if (any(is.na(mothers(x))))
     stop("mothers cannot be NA")
+	too_few <- colSums(!is.na(x@parents_geno)) < 100
+	if (any(too_few))
+		stop(sprintf("%d parents have fewer than 100 loci", sum(too_few))
 }
+
 
 #' Infer Fathers for all progeny when the mother is known
 #'
 #' @export
 setMethod("inferFathers", c(x="ProgenyArray"),
-					function(x, ehet, ehom) {
+					function(x, ehet, ehom, verbose=FALSE) {
             checkValidProgenyArray(x)
 						tmatrix <- MendelianTransmissionWithError(ehet, ehom)
 						fathers_lle <- vector('list', ncol(progenyGenotypes((x))))
-            # extract the progeny, mothers indices, and father genotypes
-						parents <- parentGenotypes(x)
+
+            # extract the parental and progeny genotypes for complete loci
+						parents <- parentGenotypes(x)[x@complete_loci, ]
+            kids <- progenyGenotypes(x)[x@complete_loci, ]
             moms_i <- mothers(x)
-            kids <- progenyGenotypes(x)
+
 						for (i in seq_len(ncol(kids))) {
 							kid <- kids[, i]
 							mom <- parents[, moms_i[i]]
-							fathers_lle[[i]] <- inferFather(kid, mom, parents, tmatrix)
+							# find loci that are complete in kids (note all complete in parents)
+							noNA_i <- which(!is.na(kid))
+							fathers_lle[[i]] <- inferFather(kid[noNA_i], mom[noNA_i],
+																							parents[noNA_i, ], tmatrix)
+							if (verbose)
+								message(sprintf("inferred father of %d (mother = %d) as %d with %d loci",
+																i, moms_i[i], fathers_lle[[i]][[1]],
+																length(noNA_i)))
 						}
 						x@fathers <- sapply(fathers_lle, function(x) x[[1]])
             x@fathers_lle <- fathers_lle
