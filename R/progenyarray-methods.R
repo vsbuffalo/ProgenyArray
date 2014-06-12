@@ -2,11 +2,10 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
-#' Return which parents are complete
-whichParentsComplete <- function(x) {
-	stopifnot(is(x, "ProgenyArray"))
-	which(apply(!is.na(x@parents), 1, all))
-})
+#' Return which loci are complete
+whichLociComplete <- function(x) {
+	which(apply(!is.na(x), 1, all))
+}
 
 #' Constructor new ProgenyArray object.
 #'
@@ -18,16 +17,13 @@ whichParentsComplete <- function(x) {
 #' @param loci a \code{GRanges} object of loci
 #' @param ref a character vector of reference loci
 #' @param alt a \code{CharacterList} of alternate loci
-#' @param progeny_samples sample names of progeny
-#' @param parents_samples sample names of parents
 #' @export
 ProgenyArray <- function(progeny_geno, parents_geno, mothers=integer(),
-												 loci=GRanges(), ref=character(), alt=CharacterList(),
-                         parents_samples=character(), progeny_samples=character()) {
+												 loci=GRanges(), ref=character(), alt=CharacterList()) {
 	obj <- new("ProgenyArray", progeny_geno=progeny_geno, parents_geno=parents_geno,
-             mothers=mothers, ranges=loci, ref=ref, alt=alt,
-             progeny_samples=progeny_samples, parents_samples=parents_samples)
-	obj@complete_loci <- whichParentsComplete(parents_geno)
+             mothers=mothers, ranges=loci, ref=ref, alt=alt)
+
+	obj@complete_loci <- whichLociComplete(obj@parents_geno)
 	obj
 }
 
@@ -63,10 +59,10 @@ setMethod("show",
             cat(sprintf("Number of fathers: %d\n", nfathers))
             cat(sprintf("Number of mothers: %d\n", nmothers))
 						cat(sprintf("Proportion missing:\n  progeny: %0.3f\n  parents: %0.3f\n",
-												sum(is.na(x@progeny_geno))/length(x@progeny_geno),
-												sum(is.na(x@parents_geno))/length(x@parents_geno)))
+												sum(is.na(object@progeny_geno))/length(object@progeny_geno),
+												sum(is.na(object@parents_geno))/length(object@parents_geno)))
 						cat(sprintf("Number of complete parental loci: %d\n",
-												length(x@complete_loci)))
+												length(object@complete_loci)))
 
           })
 
@@ -153,15 +149,15 @@ setMethod("ref",
 #' Return progeny sample names
 #'
 #' @export
-setMethod("progenySamples", "ProgenyArray", function(object) {
-	object@progeny_samples
+setMethod("progenyNames", "ProgenyArray", function(object) {
+	colnames(object@progeny_geno)
 })
 
 #' Return parent sample names
 #'
 #' @export
-setMethod("parentSamples", "ProgenyArray", function(object) {
-	object@parents_samples
+setMethod("parentNames", "ProgenyArray", function(object) {
+	colnames(object@parents_geno)
 })
 
 
@@ -192,10 +188,12 @@ setReplaceMethod("mothers", "ProgenyArray", function(object, value) {
 #'
 #' @name parentSamples
 #' @export
-setReplaceMethod("parentSamples", "ProgenyArray", function(object, value) {
+setReplaceMethod("parentNames", "ProgenyArray", function(object, value) {
 	if (length(value) != ncol(object@parents_geno))
 		stop("length of value must be same as number of parents")
-	object@parents_samples <- value
+	if (any(duplicated(value)))
+		stop("no duplicated names allowed")
+	colnames(object@parents_geno) <- value
 	return(object)
 })
 
@@ -204,9 +202,12 @@ setReplaceMethod("parentSamples", "ProgenyArray", function(object, value) {
 #'
 #' @name progenySamples
 #' @export
-setReplaceMethod("progenySamples", "ProgenyArray", function(object, value) {
+setReplaceMethod("progenyNames", "ProgenyArray", function(object, value) {
 	if (length(value) != ncol(object@progeny_geno))
 		stop("length of value must be same as number of progeny")
-	object@progeny_samples <- value
+	if (any(duplicated(value)))
+		stop("no duplicated names allowed")
+	colnames(object@progeny_geno) <- value
 	return(object)
 })
+

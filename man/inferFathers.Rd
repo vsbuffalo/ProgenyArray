@@ -3,7 +3,7 @@
 \alias{inferFathers}
 \title{Accessor for inferFathers}
 \usage{
-inferFathers(x, ehet, ehom)
+inferFathers(x, ehet, ehom, verbose = FALSE)
 }
 \description{
 Accessor for inferFathers

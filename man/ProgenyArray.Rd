@@ -5,19 +5,19 @@
 \alias{ProgenyArray-package}
 \title{ProgenyArray.}
 \usage{
-ProgenyArray(progeny, parents, mothers = integer(), loci = GRanges(),
-  ref = character(), alt = CharacterList(), samples = character())
+ProgenyArray(progeny_geno, parents_geno, mothers = integer(),
+  loci = GRanges(), ref = character(), alt = CharacterList())
 }
 \arguments{
-\item{geno}{a genotype matrix}
+\item{progeny_geno}{}
 
-\item{loci}{a \S4Class{GRanges} object of loci}
+\item{parents_geno}{}
+
+\item{loci}{a \code{GRanges} object of loci}
 
 \item{ref}{a character vector of reference loci}
 
-\item{alt}{a \S4Class{CharacterList} of alternate loci}
-
-\item{a}{character vector of sample names}
+\item{alt}{a \code{CharacterList} of alternate loci}
 }
 \description{
 ProgenyArray.

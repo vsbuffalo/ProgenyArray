@@ -90,7 +90,7 @@ checkValidProgenyArray <- function(x) {
     stop("mothers cannot be NA")
 	too_few <- colSums(!is.na(x@parents_geno)) < 100
 	if (any(too_few))
-		stop(sprintf("%d parents have fewer than 100 loci", sum(too_few))
+		stop(sprintf("%d parents have fewer than 100 loci", sum(too_few)))
 }
 
 
@@ -116,12 +116,21 @@ setMethod("inferFathers", c(x="ProgenyArray"),
 							fathers_lle[[i]] <- inferFather(kid[noNA_i], mom[noNA_i],
 																							parents[noNA_i, ], tmatrix)
 							if (verbose)
-								message(sprintf("inferred father of %d (mother = %d) as %d with %d loci",
-																i, moms_i[i], fathers_lle[[i]][[1]],
+								message(sprintf("inferred father of %s (mother = %s) is %s with %d loci",
+																progenyNames(x)[i], parentNames(x)[moms_i[i]],
+															 	parentNames(x)[fathers_lle[[i]][[1]]],
 																length(noNA_i)))
 						}
 						x@fathers <- sapply(fathers_lle, function(x) x[[1]])
             x@fathers_lle <- fathers_lle
+						names(x@fathers_lle) <- progenyNames(x)
 						return(x)
 })
 
+setMethod("parentage", c(x="ProgenyArray"),
+					function(x) {
+						data.frame(progeny=progenyNames(x),
+											 mother=parentNames(x)[mothers(x)],
+											 father=parentNames(x)[fathers(x)])
+
+					})

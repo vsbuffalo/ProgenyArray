@@ -45,18 +45,29 @@ setGeneric("inferFathers", function(x, ehet, ehom, verbose=FALSE) {
            standardGeneric("inferFathers")
              })
 
+#' Accessor for progeny sample names
+#'
+setGeneric("progenyNames", function(object, value) {
+           standardGeneric("progenyNames")
+             })
+
+#' Accessor for parents sample names
+#'
+setGeneric("parentNames", function(object, value) {
+           standardGeneric("parentNames")
+             })
+
 #' Setter for progeny sample names
 #'
-setGeneric("progenySamples<-", function(object, value) {
-           standardGeneric("progenySamples<-")
+setGeneric("progenyNames<-", function(object, value) {
+           standardGeneric("progenyNames<-")
              })
 
 #' Setter for parents sample names
 #'
-setGeneric("parentSamples<-", function(object, value) {
-           standardGeneric("parentsSamples<-")
+setGeneric("parentNames<-", function(object, value) {
+           standardGeneric("parentNames<-")
              })
-
 
 #' Accessor for mothers
 #'
@@ -69,4 +80,10 @@ setGeneric("mothers<-", function(object, value) {
 setGeneric("fathers<-", function(object, value) {
            standardGeneric("fathers<-")
              })
+
+#' Create parentage dataframe
+#'
+setGeneric("parentage", function(x) {
+					 standardGeneric("parentage")
+						 })
 

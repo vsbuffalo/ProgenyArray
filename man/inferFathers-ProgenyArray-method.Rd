@@ -4,7 +4,7 @@
 \alias{inferFathers,ProgenyArray-method}
 \title{Infer Fathers for all progeny when the mother is known}
 \usage{
-\S4method{inferFathers}{ProgenyArray}(x, ehet, ehom)
+\S4method{inferFathers}{ProgenyArray}(x, ehet, ehom, verbose = FALSE)
 }
 \description{
 Infer Fathers for all progeny when the mother is known

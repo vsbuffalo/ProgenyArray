@@ -11,8 +11,6 @@
 #' @slot parents_geno a matrix of bialleic parents genotypes
 #' @slot mothers integer vector indicating the mother of each progeny
 #' @slot fathers integer vector indicating the father of each progeny
-#' @slot progeny_samples sample names of progeny
-#' @slot parents_samples sample names of parents
 #' @slot complete_loci which loci are complete in the parents
 #'
 #' @exportClass ProgenyArray
@@ -25,8 +23,6 @@ setClass("ProgenyArray",
                                        mothers="integer",
                                        fathers="integer",
                                        fathers_lle="list",
-                                       progeny_samples="character",
-                                       parents_samples="character",
 																			 complete_loci="integer"),
          prototype=prototype(ranges=GRanges(),
                              ref=character(),
@@ -34,8 +30,6 @@ setClass("ProgenyArray",
                              mothers=integer(),
                              fathers=integer(),
                              fathers_lle=list(),
-                             progeny_samples=character(),
-                             parents_samples=character(),
 														 complete_loci=integer()),
          validity=function(object) {
            if (nrow(object@progeny_geno) != nrow(object@parents_geno))
