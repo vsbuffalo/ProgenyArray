@@ -9,9 +9,9 @@ alleleFreqs <- function(x, min=FALSE) {
   nind <- ncol(x)
   nmissing <- rowSums(is.na(x))
   out <- rowSums(x, na.rm=TRUE)/(2*(nind - nmissing))
-	if (min)
-		return(ifelse(out == 0, 1/ncol(x), out))
-	return(out)
+  if (min)
+    return(ifelse(out == 0, 1/ncol(x), out))
+  return(out)
 }
 
 #' Calculate genotype frequencies.

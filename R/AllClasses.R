@@ -23,14 +23,14 @@ setClass("ProgenyArray",
                                        mothers="integer",
                                        fathers="integer",
                                        fathers_lle="list",
-																			 complete_loci="integer"),
+                                       complete_loci="integer"),
          prototype=prototype(ranges=GRanges(),
                              ref=character(),
                              alt=CharacterList(),
                              mothers=integer(),
                              fathers=integer(),
                              fathers_lle=list(),
-														 complete_loci=integer()),
+                             complete_loci=integer()),
          validity=function(object) {
            if (nrow(object@progeny_geno) != nrow(object@parents_geno))
              stop("number of progeny loci must equal number of parent loci")

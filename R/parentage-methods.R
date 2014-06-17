@@ -28,15 +28,15 @@ MendelianTransmissionMatrix <- function() {
 }
 
 conditionalOffspringParentMatrix <- function(freq) {
-	#  P(Go | Gm)
-	#      offspring
-	#    0   1          2
-	# 0  b   c          0
-	# 1  b/2  (b+c)/2   c/2
-	# 2  0    b         c
-	b <- 1 - freq
-	c <- freq
-	matrix(c(b, b/2, 0, c, (b+c)/2, b, 0, c/2, c), nrow=3)
+  #  P(Go | Gm)
+  #      offspring
+  #    0   1          2
+  # 0  b   c          0
+  # 1  b/2  (b+c)/2   c/2
+  # 2  0    b         c
+  b <- 1 - freq
+  c <- freq
+  matrix(c(b, b/2, 0, c, (b+c)/2, b, 0, c/2, c), nrow=3)
 }
 
 #' Create a genotyping error matrix.
@@ -71,25 +71,25 @@ MendelianTransmissionWithError <- function(ehet=0.6, ehom=0.1) {
 }
 
 probOffspringGivenParent <- function(offspring, parent, freqs, ehet, ehom) {
-	stopifnot(!any(is.na(offspring)))
-	stopifnot(!any(is.na(parent)))
-	stopifnot(!any(is.na(freqs)))
-	error_matrix <- genotypingErrorMatrix(ehet, ehom)
-	mapply(function(f, o, m) {
-				 mat <- conditionalOffspringParentMatrix(f)
-				 (mat %*% error_matrix)[m+1L, o+1L]
-	}, freqs, offspring, parent)
+  stopifnot(!any(is.na(offspring)))
+  stopifnot(!any(is.na(parent)))
+  stopifnot(!any(is.na(freqs)))
+  error_matrix <- genotypingErrorMatrix(ehet, ehom)
+  mapply(function(f, o, m) {
+         mat <- conditionalOffspringParentMatrix(f)
+         (mat %*% error_matrix)[m+1L, o+1L]
+  }, freqs, offspring, parent)
 
 }
 
 #' Internal function for inferring father using MLE methods
 #'
 inferFather <- function(progeny, mother, fathers, ehet, ehom) {
-	tmatrix <- MendelianTransmissionWithError(ehet, ehom)
-	# first check that fathers is not dimensionless - these means there's only
-	# one loci
-	if (is.null(dim(fathers)))
-		return(list(father=NA, lrt=NA, ll=NA, delta=NA, all_ll=NA, nloci=NA))
+  tmatrix <- MendelianTransmissionWithError(ehet, ehom)
+  # first check that fathers is not dimensionless - these means there's only
+  # one loci
+  if (is.null(dim(fathers)))
+    return(list(father=NA, lrt=NA, ll=NA, delta=NA, all_ll=NA, nloci=NA))
 
   # this function gathers all of the probabilities from our transmission matrix,
   # for a particular father, given by their index in fathers.
@@ -100,25 +100,25 @@ inferFather <- function(progeny, mother, fathers, ehet, ehom) {
 
   # calculate log-likelihood under the assumption that all loci are independent
   ll <- lapply(transmission_probs, function(x) log(x))
-	lle <- sapply(ll, sum)
+  lle <- sapply(ll, sum)
   lle_order <- order(lle, decreasing=TRUE)
-	mle_dad <- lle_order[1]
+  mle_dad <- lle_order[1]
   delta <- lle[mle_dad] - lle[lle_order[2]]
 
-	# psueod-LRT for mle dad
-	allele_freqs <- alleleFreqs(cbind(progeny, mother, fathers), min=TRUE)
-	stopifnot(min(allele_freqs) > 0)
-	# conditional prob of offspring given alleged father
-	cpoa <- probOffspringGivenParent(progeny, fathers[mle_dad], allele_freqs, ehet, ehom)
-	lo <- log(cpoa)
-	lrt <- sum(ll[[mle_dad]] - lo)
+  # psueod-LRT for mle dad
+  allele_freqs <- alleleFreqs(cbind(progeny, mother, fathers), min=TRUE)
+  stopifnot(min(allele_freqs) > 0)
+  # conditional prob of offspring given alleged father
+  cpoa <- probOffspringGivenParent(progeny, fathers[mle_dad], allele_freqs, ehet, ehom)
+  lo <- log(cpoa)
+  lrt <- sum(ll[[mle_dad]] - lo)
   list(father=mle_dad, lrt=lrt, ll=lle[lle_order[1]],
-			 delta=delta, all_ll=lle, nloci=length(progeny))
+       delta=delta, all_ll=lle, nloci=length(progeny))
 }
 
 inferFatherWithoutMother <- function(progeny, fathers, ehet, ehom) {
-	
-	cpoa <- probOffspringGivenParent(progeny, fathers, allele_freqs, ehet, ehom)
+  
+  cpoa <- probOffspringGivenParent(progeny, fathers, allele_freqs, ehet, ehom)
 }
 
 #' Check if is valid: all progeny have mothers in genotype matrix.
@@ -127,9 +127,9 @@ checkValidProgenyArray <- function(x) {
     stop("mothers vector must be same length as progeny vector")
   if (any(is.na(mothers(x))))
     stop("mothers cannot be NA")
-	too_few <- colSums(!is.na(x@parents_geno)) < 100
-	if (any(too_few))
-		stop(sprintf("%d parents have fewer than 100 loci", sum(too_few)))
+  too_few <- colSums(!is.na(x@parents_geno)) < 100
+  if (any(too_few))
+    stop(sprintf("%d parents have fewer than 100 loci", sum(too_few)))
 }
 
 
@@ -137,39 +137,39 @@ checkValidProgenyArray <- function(x) {
 #'
 #' @export
 setMethod("inferFathers", c(x="ProgenyArray"),
-					function(x, ehet, ehom, verbose=FALSE) {
+          function(x, ehet, ehom, verbose=FALSE) {
             checkValidProgenyArray(x)
-						fathers_lle <- vector('list', ncol(progenyGenotypes((x))))
+            fathers_lle <- vector('list', ncol(progenyGenotypes((x))))
 
             # extract the parental and progeny genotypes for complete loci
-						parents <- parentGenotypes(x)[x@complete_loci, ]
+            parents <- parentGenotypes(x)[x@complete_loci, ]
             kids <- progenyGenotypes(x)[x@complete_loci, ]
             moms_i <- mothers(x)
 
-						for (i in seq_len(ncol(kids))) {
-							kid <- kids[, i]
-							mom <- parents[, moms_i[i]]
-							# find loci that are complete in kids (note all complete in parents)
-							noNA_i <- which(!is.na(kid))
-							fathers_lle[[i]] <- inferFather(kid[noNA_i], mom[noNA_i],
-																							parents[noNA_i, ], ehet, ehom)
-							if (verbose)
-								message(sprintf("inferred father of %s (mother = %s) is %s with %d loci",
-																progenyNames(x)[i], parentNames(x)[moms_i[i]],
-															 	parentNames(x)[fathers_lle[[i]][[1]]],
-																length(noNA_i)))
-						}
-						x@fathers <- sapply(fathers_lle, function(x) x[[1]])
-						#x@lrt <- sapply(fathers_lle, function(x) x[[2]])
+            for (i in seq_len(ncol(kids))) {
+              kid <- kids[, i]
+              mom <- parents[, moms_i[i]]
+              # find loci that are complete in kids (note all complete in parents)
+              noNA_i <- which(!is.na(kid))
+              fathers_lle[[i]] <- inferFather(kid[noNA_i], mom[noNA_i],
+                                              parents[noNA_i, ], ehet, ehom)
+              if (verbose)
+                message(sprintf("inferred father of %s (mother = %s) is %s with %d loci",
+                                progenyNames(x)[i], parentNames(x)[moms_i[i]],
+                                parentNames(x)[fathers_lle[[i]][[1]]],
+                                length(noNA_i)))
+            }
+            x@fathers <- sapply(fathers_lle, function(x) x[[1]])
+            #x@lrt <- sapply(fathers_lle, function(x) x[[2]])
             x@fathers_lle <- fathers_lle
-						names(x@fathers_lle) <- progenyNames(x)
-						return(x)
+            names(x@fathers_lle) <- progenyNames(x)
+            return(x)
 })
 
 setMethod("parentage", c(x="ProgenyArray"),
-					function(x) {
-						data.frame(progeny=progenyNames(x),
-											 mother=parentNames(x)[mothers(x)],
-											 father=parentNames(x)[fathers(x)])
+          function(x) {
+            data.frame(progeny=progenyNames(x),
+                       mother=parentNames(x)[mothers(x)],
+                       father=parentNames(x)[fathers(x)])
 
-					})
+          })

@@ -84,6 +84,6 @@ setGeneric("fathers<-", function(object, value) {
 #' Create parentage dataframe
 #'
 setGeneric("parentage", function(x) {
-					 standardGeneric("parentage")
-						 })
+           standardGeneric("parentage")
+             })
 
