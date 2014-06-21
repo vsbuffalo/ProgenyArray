@@ -1,6 +1,7 @@
 #include <Rcpp.h>
 #include <RcppEigen.h>
 #include <array>
+#include <assert.h>
 #include <vector>
 #include <iostream>
 // [[Rcpp::depends(RcppEigen)]]
@@ -93,6 +94,9 @@ probQQ(IntegerVector progeny, IntegerVector parent_1, IntegerVector parent_2) {
   NumericVector out(1);
   double ll = 0;
   for (int i = 0; i < progeny.size(); i++) {
+    //std::cout << tmprobs[parent_1[i]] << std::endl << std::endl;
+    if (progeny[i] > 2)
+      throw std::invalid_argument("error"); // TODO
     ll += tmprobs[parent_1[i]](parent_2[i], progeny[i]);
   }
   out[0] = ll;

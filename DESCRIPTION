@@ -9,9 +9,10 @@ Depends:
     GenomicRanges
 Imports:
     Rcpp,
+    RcppEigen,
     tasselr,
     methods,
     Biobase
-LinkingTo: Rcpp
+LinkingTo: Rcpp, RcppEigen
 License: BSD
 LazyData: true
