@@ -5,6 +5,17 @@
 
 using namespace Rcpp;
 
+// printMendelianMatrices
+void printMendelianMatrices();
+RcppExport SEXP ProgenyArray_printMendelianMatrices() {
+BEGIN_RCPP
+    {
+        Rcpp::RNGScope __rngScope;
+        printMendelianMatrices();
+    }
+    return R_NilValue;
+END_RCPP
+}
 // countGenotypes
 IntegerVector countGenotypes(IntegerVector x);
 RcppExport SEXP ProgenyArray_countGenotypes(SEXP xSEXP) {
