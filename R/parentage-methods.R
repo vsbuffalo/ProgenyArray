@@ -39,6 +39,7 @@ conditionalOffspringParentMatrix <- function(freq) {
   matrix(c(b, b/2, 0, c, (b+c)/2, b, 0, c/2, c), nrow=3)
 }
 
+
 #' Create a genotyping error matrix.
 #'
 #' Returns a matrix of transition probabilities for a given genotype given error.
@@ -54,7 +55,7 @@ conditionalOffspringParentMatrix <- function(freq) {
 #' e is the probability that the homozygous genotypes call is incorrect.
 #' @export
 genotypingErrorMatrix <- function(ehet=0.6, ehom=0.1) {
-  matrix(c(1-ehom, ehet/2, ehom/2, ehom/2, 1-ehom, ehom/2, ehom/2, ehet/2, 1-ehom),
+  matrix(c(1-ehom, ehet/2, ehom/2, ehom/2, 1-ehet, ehom/2, ehom/2, ehet/2, 1-ehom),
          ncol=3)
 }
 
@@ -79,7 +80,6 @@ probOffspringGivenParent <- function(offspring, parent, freqs, ehet, ehom) {
          mat <- conditionalOffspringParentMatrix(f)
          (mat %*% error_matrix)[m+1L, o+1L]
   }, freqs, offspring, parent)
-
 }
 
 #' Internal function for inferring father using MLE methods
