@@ -7,5 +7,7 @@ parentNames(object, value)
 }
 \description{
 Accessor for parents sample names
+
+Set method for parents sample names
 }
 

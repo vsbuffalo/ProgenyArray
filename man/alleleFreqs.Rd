@@ -3,7 +3,7 @@
 \alias{alleleFreqs}
 \title{Calculate allele frequenceies.}
 \usage{
-alleleFreqs(x)
+alleleFreqs(x, min = FALSE)
 }
 \description{
 Calculate allele frequenceies.

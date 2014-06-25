@@ -22,19 +22,21 @@ setClass("ProgenyArray",
                                        parents_geno="matrix",
                                        mothers="integer",
                                        fathers="integer",
+                                       parents="data.frame",
                                        fathers_lle="list",
-                                       complete_loci="integer"),
+                                       complete_loci="integer",
+                                       parent_lods="data.frame",
+                                       inconsistent_mothers="integer"),
          prototype=prototype(ranges=GRanges(),
                              ref=character(),
                              alt=CharacterList(),
                              mothers=integer(),
                              fathers=integer(),
+                             parents=data.frame(),
                              fathers_lle=list(),
-                             complete_loci=integer()),
+                             inconsistent_mothers=integer()),
          validity=function(object) {
            if (nrow(object@progeny_geno) != nrow(object@parents_geno))
              stop("number of progeny loci must equal number of parent loci")
-           if (length(object@mothers) != ncol(object@progeny_geno))
-             stop("mothers vector must be equal length as progeny genotype matrix")
          })
 

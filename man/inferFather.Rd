@@ -3,7 +3,7 @@
 \alias{inferFather}
 \title{Internal function for inferring father using MLE methods}
 \usage{
-inferFather(progeny, mother, fathers, tmatrix)
+inferFather(progeny, mother, fathers, ehet, ehom)
 }
 \description{
 Internal function for inferring father using MLE methods

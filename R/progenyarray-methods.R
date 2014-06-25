@@ -43,16 +43,18 @@ setMethod("show",
                         length(seqlevels(object@ranges)),
                         round(object.size(object)/1024^2, 3)))
             # convience function for getting lengths
-            numOrNA <- function(x) {
+            numOrNA <- function(x, unique=FALSE) {
               if (length(x) == 0)
                 return(NA)
-              if (is.null(dim(x)))
+              if (is.null(dim(x))) {
+                if (unique) return(length(unique(x)))
                 return(length(x))
+              }
               return(ncol(x))
             }
             nfathers <- numOrNA(object@fathers)
             nparents <- numOrNA(object@parents_geno)
-            nmothers <- numOrNA(object@mothers)
+            nmothers <- numOrNA(object@mothers, unique=TRUE)
             nprogeny <- numOrNA(object@progeny_geno)
             cat(sprintf("Number of progeny: %d\n", nprogeny))
             cat(sprintf("Number of parents: %d\n", nparents))
@@ -86,6 +88,17 @@ setMethod("progenyGenotypes",
           function(x) {
             return(x@progeny_geno)
           })
+
+#' Accessor for parents in a ProgenyArray object
+#'
+#' @param x a ProgenyArray object
+#' @export
+setMethod("parents",
+          c(x="ProgenyArray"),
+          function(x) {
+            return(x@parents)
+          })
+
 
 #' Accessor for fathers in a ProgenyArray object
 #'
@@ -186,7 +199,7 @@ setReplaceMethod("mothers", "ProgenyArray", function(object, value) {
 
 #' Set method for parents sample names
 #'
-#' @name parentSamples
+#' @name parentNames
 #' @export
 setReplaceMethod("parentNames", "ProgenyArray", function(object, value) {
   if (length(value) != ncol(object@parents_geno))
@@ -200,7 +213,7 @@ setReplaceMethod("parentNames", "ProgenyArray", function(object, value) {
 
 #' Set method for progeny sample names
 #'
-#' @name progenySamples
+#' @name progenyNames
 #' @export
 setReplaceMethod("progenyNames", "ProgenyArray", function(object, value) {
   if (length(value) != ncol(object@progeny_geno))

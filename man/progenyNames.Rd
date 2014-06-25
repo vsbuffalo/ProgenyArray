@@ -7,5 +7,7 @@ progenyNames(object, value)
 }
 \description{
 Accessor for progeny sample names
+
+Set method for progeny sample names
 }
 

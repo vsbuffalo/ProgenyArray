@@ -6,10 +6,10 @@ Description: This package contains classes for storing progeny array genotyping
     data, and some statistical genetics methods.
 Depends:
     R (>= 3.1.0),
-    GenomicRanges
-Imports:
+    GenomicRanges,
     Rcpp,
-    RcppEigen,
+    RcppEigen
+Imports:
     tasselr,
     methods,
     Biobase

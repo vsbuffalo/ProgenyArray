@@ -27,6 +27,13 @@ setGeneric("mothers", function(x, names=TRUE) {
            standardGeneric("mothers")
              })
 
+#' Accessor for parents (returning indices or names)
+#'
+setGeneric("parents", function(x, names=TRUE) {
+           standardGeneric("parents")
+             })
+
+
 #' Accessor for progenyGenotypes
 #'
 setGeneric("progenyGenotypes", function(x, names=TRUE) {
@@ -39,10 +46,10 @@ setGeneric("parentGenotypes", function(x, names=TRUE) {
            standardGeneric("parentGenotypes")
              })
 
-#' Accessor for inferFathers
+#' Accessor for inferParents
 #'
-setGeneric("inferFathers", function(x, ehet, ehom, verbose=FALSE) {
-           standardGeneric("inferFathers")
+setGeneric("inferParents", function(x, ehet, ehom, verbose=FALSE) {
+           standardGeneric("inferParents")
              })
 
 #' Accessor for progeny sample names

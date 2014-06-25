@@ -35,5 +35,17 @@ createProgenyArrayWithSelfing <- function(x, ehet=0, ehom=0, nprogeny=50) {
                                    }))
   list(progeny=progeny, mom_i=mom_i, dad_i=dad_i)
 }
-
-
+#
+#pop <- createDiploidSample(20, 4000)
+#ehet <- 0.8
+#ehom <- 0.3
+#pal <- createProgenyArrayWithSelfing(pop, ehet, ehom)
+#pa <- ProgenyArray(pal$progeny, pop)
+#freqs <-  alleleFreqs(pop)
+#xx <- inferParents(pa, ehet, ehom, TRUE)
+#qq <- xx[[1]][[1]]
+#qu <- xx[[1]][[2]]
+#uu <- xx[[1]][[3]]
+#
+#ggplot(melt(qq - uu)) + geom_tile(aes(x=Var1, y=Var2, fill=log(value)))
+#maxLikelihoodParents(qq - uu)

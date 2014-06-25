@@ -9,8 +9,10 @@
 using namespace Rcpp;
 using Eigen::Map;
 using Eigen::Matrix3d;
+using Eigen::Vector3d;
 
-// Mendelian transmission matrix
+// Mendelian transmission matrix, P(G_o | G_m, G_f)
+// dimensions: mother, father, offspring
 std::array<Matrix3d,3>
 MendelianTransmissionMatrix() {
   double transprobs[3][9] = {
@@ -24,9 +26,9 @@ MendelianTransmissionMatrix() {
   return tmprobs;
 }
 
-// Conditional offpsring given parent, P(G_o | G_p)
+// Conditional offspring given parent, P(G_o | G_p)
 Matrix3d
-ConditionalTransmissionMatrix(double freq) {
+ConditionalTransmissionMatrix(const double freq) {
   Matrix3d tmprob;
   tmprob << 1 - freq,       freq,       0,
             (1 - freq)/2.,  1/2.,       freq/2.,
@@ -36,7 +38,7 @@ ConditionalTransmissionMatrix(double freq) {
 
 // Genotype error matrix
 Matrix3d
-GenotypeError(double ehet, double ehom) {
+GenotypeError(const double ehet, const double ehom) {
   Matrix3d error;
   error << 1-ehom, ehom/2, ehom/2,
            ehet/2, 1-ehet, ehet/2,
@@ -46,7 +48,8 @@ GenotypeError(double ehet, double ehom) {
 
 // Product of Mendelian transmission matrix and genotype error
 std::array<Matrix3d,3>
-MendelianTransmissionWithErrorMatrix(double ehet, double ehom, bool use_log) {
+MendelianTransmissionWithErrorMatrix(const double ehet, const double ehom,
+                                     const bool use_log) {
   std::array<Matrix3d,3> tmprobs = MendelianTransmissionMatrix();
   Matrix3d error = GenotypeError(ehet, ehom);
   for (int i = 0; i < 3; i++) {
@@ -60,7 +63,8 @@ MendelianTransmissionWithErrorMatrix(double ehet, double ehom, bool use_log) {
 
 // Product of conditional offspring matrix and genotype error
 Matrix3d
-ConditionalTransmissionMatrixWithError(double freq, double ehet, double ehom, bool use_log) {
+ConditionalTransmissionMatrixWithError(const double freq, const double ehet,
+                                       const double ehom, const bool use_log) {
   Matrix3d tmprob = ConditionalTransmissionMatrix(freq);
   Matrix3d error = GenotypeError(ehet, ehom);
   if (use_log)
@@ -69,7 +73,14 @@ ConditionalTransmissionMatrixWithError(double freq, double ehet, double ehom, bo
     tmprob = tmprob * error;
   return tmprob;
 }
-
+// TODO HERE const
+Vector3d HWWithError(double freq, double ehet, double ehom, bool use_log) {
+  Vector3d hwprobs(pow(1-freq, 2.), 2*freq*(1-freq), pow(freq, 2.));
+  hwprobs = hwprobs.transpose() * GenotypeError(ehet, ehom);
+  if (use_log)
+    hwprobs = hwprobs.array().log().matrix();
+  return hwprobs;
+}
 
 // [[Rcpp::export(".printMendelianMatrices")]]
 void
@@ -84,93 +95,141 @@ printMendelianMatrices(NumericVector ehetv, NumericVector ehomv, LogicalVector l
   std::cout << tmprobs << std::endl << std::endl;
 }
 
-// [[Rcpp::export(".probQQ")]]
-NumericVector
-probQQ(IntegerVector progeny, IntegerVector parent_1, IntegerVector parent_2) {
-//              std::array<Matrix3d,3> &transm) {
+double
+probQQ(const NumericVector freqs, const IntegerVector progeny,
+    const IntegerMatrix::Column parent_1, const IntegerMatrix::Column parent_2,
+    const double ehet, const double ehom, const std::array<Matrix3d,3> tmprobs,
+    const LogicalVector use_locus) {
   // TODO size assertion
-  std::array<Matrix3d,3> tmprobs;
-  tmprobs = MendelianTransmissionWithErrorMatrix(0.8, 0.1, true);
-  NumericVector out(1);
   double ll = 0;
+  Vector3d hwprobs;
   for (int i = 0; i < progeny.size(); i++) {
+    if (!use_locus[i]) continue;
+    hwprobs = HWWithError(freqs[i], ehet, ehom, true);
     //std::cout << tmprobs[parent_1[i]] << std::endl << std::endl;
-    if (progeny[i] > 2)
-      throw std::invalid_argument("error"); // TODO
+    //if (progeny[i] > 2)
+    //  throw std::invalid_argument(""); // TODO
     ll += tmprobs[parent_1[i]](parent_2[i], progeny[i]);
+    ll += hwprobs[parent_1[i]] + hwprobs[parent_2[i]];
   }
-  out[0] = ll;
-  return out;
+  return ll;
 }
 
 // Probability of offspring given one parent and random allele draw from population
-// [[Rcpp::export(".probQU")]]
-NumericVector
-probQU(NumericVector freqs, IntegerVector progeny, IntegerVector parent,
-       double ehet, double ehom) {
-  // TODO size assertion
-  Matrix3d tmprob;
-  NumericVector out(1);
-  double ll = 0;
-  for (int i = 0; i < progeny.size(); i++) {
-    tmprob = ConditionalTransmissionMatrixWithError(freqs[i], ehet, ehom, true);
-    ll += tmprob(parent[i], progeny[i]);
-  }
-  out[0] = ll;
-  return out;
-}
+//double
+//probQU(NumericVector freqs, IntegerVector progeny, IntegerMatrix::Column parent,
+//       double ehet, double ehom, LogicalVector use_locus) {
+//  // TODO size assertion
+//  Matrix3d tmprob;
+//  Vector3d hwprobs;
+//  double ll = 0;
+//  for (int i = 0; i < progeny.size(); i++) {
+//    if (!use_locus[i]) continue;
+//    hwprobs = HWWithError(freqs[i], ehet, ehom, true);
+//    tmprob = ConditionalTransmissionMatrixWithError(freqs[i], ehet, ehom, true);
+//    // TODO FIXME this probability calc needs to incorporate both parents
+//    ll += tmprob(parent[i], progeny[i]);
+//  }
+//  return ll;
+//}
 
 // Probability of seeing these genotypes from random allele draws in population
-// [[Rcpp::export(".probUU")]]
-NumericVector
-probUU(NumericVector freqs, IntegerVector progeny, IntegerVector parent_1,
-       IntegerVector parent_2, double ehet, double ehom) {
-  Matrix3d tmprob;
-  NumericVector out(1);
-  double f, ll = 0;
+double
+probUU(const NumericVector freqs, const IntegerVector progeny,
+    const IntegerMatrix::Column parent_1, const IntegerMatrix::Column parent_2,
+    const double ehet, const double ehom, const LogicalVector use_locus) {
+  double ll = 0;
+  Vector3d hwprobs;
   for (int i = 0; i < progeny.size(); i++) {
-    f = freqs[i];
-    std::array<double,3> hwprobs = {log(pow(1-f, 2.)),
-                                    log(2*f*(1-f)),
-                                    log(pow(f, 2.))};
+    if (!use_locus[i]) continue;
+    hwprobs = HWWithError(freqs[i], ehet, ehom, true);
     ll += hwprobs[progeny[i]];
     ll += hwprobs[parent_1[i]];
     ll += hwprobs[parent_2[i]];
   }
-  out[0] = ll;
-  return out;
+  return ll;
 }
 
-
-//// [[Rcpp::export(".genealogyLikelihood")]]
-
-
-//List maxLikelihoodGenealogy(IntegerMatrix parents, NumericVector freqs, NumericVector ehetv, NumericVector ehomv) {
-//  // Find the maximum likelihood genealogy for a trio (allowing for selfing
-//  // too). For P parents, this evaluates:
-//  //
-//  // (1) the probability of each of the P(P - 1)/2 possible two parents being
-//  // parents
-//  // (2) the probability of each of the 20 parents and a random parent
-//  // from the population (there are P of these)
-//  // (3) the probabiity of each parent having selfed (P of these)
-
-//  // (4) the probablity of two random parents from the population
-//  //
-//  int nloci = parents.nrow(), nparents = parents.ncol();
-//  double ehet = ehetv[0], ehom=ehom[0];
-//
-//  // Allocate a matrix for all parent comparisons for (1)
-//  NumericMatrix prob_qq(nparents, nparents);
-//  // Allocate vectors for each of the one-related parent, selfing, and random parent probabilties
-//  NumericVector prob_qu(nparents);
-//  NumericVector prob_q(nparents);
-//  NumericVector prob_uu(nparents);
-//
-//  for (int p1 = 0; p < nparents; p++) {
-//    for (int p2 = 0; p < nparents; p++) {
-//
-//    }
+// Calculate probability of both QQ and UU simultaneously (decreases number of
+// iterations
+//std::array<double,2>
+//probQQUU(const NumericVector freqs, const IntegerVector progeny,
+//        const IntegerMatrix::Column parent_1, const IntegerMatrix::Column parent_2,
+//        const double ehet, const double ehom, const LogicalVector use_locus) {
+//  double ll = 0;
+//  Vector3d hwprobs;
+//  for (int i = 0; i < progeny.size(); i++) {
+//    if (!use_locus[i]) continue;
+//    hwprobs = HWWithError(freqs[i], ehet, ehom, true);
+//    ll += hwprobs[progeny[i]];
+//    ll += hwprobs[parent_1[i]];
+//    ll += hwprobs[parent_2[i]];
 //  }
-//
+//  return ll;
 //}
+//
+
+
+// allParentLikelihoods returns a list of the log likelihoods of each of three trio
+// configurations: QQ, QU, UU. QQ is a P x P upper right triangle matrix, U is
+// a P length vector and QU ia P x P URT matrix. These log likelihoods are summed
+// across
+// [[Rcpp::export(".allParentLikelihoods")]]
+List allParentLikelihoods(const IntegerVector progeny, const IntegerMatrix parents,
+                          const NumericVector freqs, const NumericVector ehetv,
+                          const NumericVector ehomv) {
+  double ehet = ehetv[0], ehom = ehomv[0];
+  int nparents = parents.ncol(), nloci = parents.nrow();
+  std::array<Matrix3d,3> tmprobs;
+  tmprobs = MendelianTransmissionWithErrorMatrix(ehet, ehom, true);
+  NumericMatrix prob_qq(nparents, nparents), prob_uu(nparents, nparents);
+  //NumericMatrix prob_qu(nparents, nparents);
+  IntegerVector nloci_used(1);
+
+  std::fill(prob_qq.begin(), prob_qq.end(), NumericMatrix::get_na());
+  std::fill(prob_uu.begin(), prob_uu.end(), NumericMatrix::get_na());
+  //std::fill(prob_qu.begin(), prob_qu.end(), NumericMatrix::get_na());
+
+  // A vector of non-NA progeny loci which is passed to other functions.
+  // This prevents need for explicit subsetting and creating new vectors.
+  LogicalVector complete_loci(nloci);
+  complete_loci = !is_na(progeny);
+  nloci_used[0] = sum(complete_loci);
+
+  for (int p1 = 0; p1 < nparents; p1++) {
+    IntegerMatrix::Column mom = parents(_, p1);
+    //IntegerVector mom = parents(_, p1);
+    for (int p2 = p1; p2 < nparents; p2++) {
+      IntegerMatrix::Column dad = parents(_, p2);
+      //IntegerVector dad = parents(_, p2);
+      prob_qq(p1, p2) = probQQ(freqs, progeny, mom, dad, ehet, ehom, tmprobs, complete_loci);
+      prob_uu(p1, p2) = probUU(freqs, progeny, mom, dad, ehet, ehom, complete_loci);
+    }
+  }
+  return List::create(_["prob_qq"]=prob_qq, _["prob_uu"]=prob_uu, _["nloci"]=nloci_used);
+}
+
+// Calculate the likelihoods of each parent under different models of
+// relatedness. This requires that the progeny and parents matrices have
+// already been subset so that all parental loci are complete (no NAs). NAs in
+// the kid matrix are allowed, as allParentLikelihoods will only operate on the
+// subset of loci the kid has complete.
+// [[Rcpp::export(".inferParents")]]
+List inferParents(IntegerMatrix progeny, IntegerMatrix parents, NumericVector
+    freqs, NumericVector ehetv, NumericVector ehomv, LogicalVector verbosev) {
+
+  int nprogeny = progeny.ncol();
+  List calls;
+  bool verbose = verbosev[0];
+
+  for (int p = 0; p < nprogeny; p++) {
+    checkUserInterrupt();
+    IntegerMatrix::Column kid = progeny(_, p);
+    if (verbose)
+      std::cout << "\t" << p << "/" << nprogeny << " progeny completed\r" << std::flush;
+    calls.push_back(allParentLikelihoods(kid, parents, freqs, ehetv, ehomv));
+  }
+  if (verbose)
+    std::cout << std::endl;
+  return calls;
+}
