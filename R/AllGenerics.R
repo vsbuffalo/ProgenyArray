@@ -27,6 +27,12 @@ setGeneric("mothers", function(x, names=TRUE) {
            standardGeneric("mothers")
              })
 
+#' Accessor for user-supplied mothers (returning indices or names)
+#'
+setGeneric("suppliedMothers", function(x, names=TRUE) {
+           standardGeneric("suppliedMothers")
+             })
+
 #' Accessor for parents (returning indices or names)
 #'
 setGeneric("parents", function(x, names=TRUE) {
@@ -64,6 +70,12 @@ setGeneric("parentNames", function(object, value) {
            standardGeneric("parentNames")
              })
 
+#' Create a diagnostic plot of a parentage inference, looking at all log likelihood ratios.
+#'
+setGeneric("parentLLPlot", function(x, progeny) {
+           standardGeneric("parentLLPlot")
+             })
+
 #' Setter for progeny sample names
 #'
 setGeneric("progenyNames<-", function(object, value) {
@@ -74,6 +86,12 @@ setGeneric("progenyNames<-", function(object, value) {
 #'
 setGeneric("parentNames<-", function(object, value) {
            standardGeneric("parentNames<-")
+             })
+
+#' Accessor for user-supplied mothers
+#'
+setGeneric("suppliedMothers<-", function(object, value) {
+           standardGeneric("suppliedMothers<-")
              })
 
 #' Accessor for mothers

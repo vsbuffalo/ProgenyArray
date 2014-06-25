@@ -10,6 +10,6 @@
 \item{x}{a ProgenyArray object}
 }
 \description{
-Accessor for mothers in a ProgenyArray object
+Internally, this references the \code{parents} slot.
 }
 

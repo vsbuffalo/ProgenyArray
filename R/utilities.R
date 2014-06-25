@@ -2,10 +2,46 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
-#' Calculate allele frequenceies.
+#' Create a diagnostic plot of a parentage inference, looking at all log likelihood ratios.
+#'
+#' @param x a ProgenyArray object
+#' @param progeny which progeny to use (an index to its column in progeny genotypes)
 #'
 #' @export
+setMethod("parentLLPlot", "ProgenyArray", function(x, progeny) {
+  lods <- x@parent_lods
+  d <- melt(lods[[progeny]][[1]] - lods[[progeny]][[2]])
+  p <- ggplot(d) + geom_tile(aes(x=Var1, y=Var2, fill=value))
+  p <- + scale_fill_gradient2("log odds QQ/UU") + xlab("parent 1") + ylab("parent 2")
+  p
+})
+
+#' Create a genotyping error matrix.
+#'
+#' Returns a matrix of transition probabilities for a given genotype given error.
+#'
+#' @param ehet the probability that a heterozygous genotype is incorrect
+#' @param ehom the probability that a homozygous genotype is incorrect
+#'
+#' This function creates a matrix of the form:
+#'   [1-e, e/2, e/2,
+#'    E/2, 1-E, E/2,
+#'    e/2, e/2, 1-e]
+#' where E is the probability the heterozygous genotype call is incorrect, and
+#' e is the probability that the homozygous genotypes call is incorrect.
+#' @export
+genotypingErrorMatrix <- function(ehet=0.6, ehom=0.1) {
+  matrix(c(1-ehom, ehet/2, ehom/2, ehom/2, 1-ehet, ehom/2, ehom/2, ehet/2, 1-ehom),
+         ncol=3)
+}
+
+#' Calculate allele frequenceies.
+#'
+#' @param x a genotype matrix
+#' @param min force minimum allele frequency to be 1/nsample
+#' @export
 alleleFreqs <- function(x, min=FALSE) {
+  # TODO make this handle missing data better.
   nind <- ncol(x)
   nmissing <- rowSums(is.na(x))
   out <- rowSums(x, na.rm=TRUE)/(2*(nind - nmissing))
@@ -16,6 +52,8 @@ alleleFreqs <- function(x, min=FALSE) {
 
 #' Calculate genotype frequencies.
 #'
+#' @param x a genotype matrix
+#' @param counts whether to return genotype counts rather than frequency
 #' @export
 genotypeFreqs <- function(x, counts=FALSE) {
   out <- t(apply(x, 1, countGenotypes))
@@ -26,6 +64,7 @@ genotypeFreqs <- function(x, counts=FALSE) {
 
 #' Create dataframe of Hardy-Weinberg values.
 #'
+#' @param x a genotype matrix
 #' @export
 HW <- function(x) {
   out <- as.data.frame(genotypeFreqs(x))
@@ -36,6 +75,7 @@ HW <- function(x) {
 
 #' Plot genotype and allele frequencies.
 #'
+#' @param x a genotype matrix
 #' @export
 HWPlot <- function(x) {
   p <- ggplot(HW(x))
@@ -44,6 +84,12 @@ HWPlot <- function(x) {
   p <- p + geom_point(aes(x=freq, y=g2), color="dark green")
   p
 }
+
+
+#### BEGIN DEPRECATED ####
+# These functions were used to generate Mendelian transmission probabilties
+# when parentage was inferred in R. Now this is done in C++; these are just
+# here for debugging/testing
 
 MendelianTransmissionList <- function(x) {
     # Mendelian transition matrix, in list notation for readability
@@ -83,26 +129,6 @@ conditionalOffspringParentMatrix <- function(freq) {
 }
 
 
-#' Create a genotyping error matrix.
-#'
-#' Returns a matrix of transition probabilities for a given genotype given error.
-#'
-#' @param ehet the probability that a heterozygous genotype is incorrect
-#' @param ehom the probability that a homozygous genotype is incorrect
-#'
-#' This function creates a matrix of the form:
-#'   [1-e, e/2, e/2,
-#'    E/2, 1-E, E/2,
-#'    e/2, e/2, 1-e]
-#' where E is the probability the heterozygous genotype call is incorrect, and
-#' e is the probability that the homozygous genotypes call is incorrect.
-#' @export
-genotypingErrorMatrix <- function(ehet=0.6, ehom=0.1) {
-  matrix(c(1-ehom, ehet/2, ehom/2, ehom/2, 1-ehet, ehom/2, ehom/2, ehet/2, 1-ehom),
-         ncol=3)
-}
-
-
 #' Create a Mendelian transmission matrix, with error in observed progeny genotypes.
 #'
 #' @param ehet the probability that a heterozygous genotype is incorrect
@@ -126,3 +152,4 @@ probOffspringGivenParent <- function(offspring, parent, freqs, ehet, ehom) {
 }
 
 
+#### END DEPRECATED ####

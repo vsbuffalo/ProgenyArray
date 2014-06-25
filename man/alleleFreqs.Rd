@@ -5,6 +5,11 @@
 \usage{
 alleleFreqs(x, min = FALSE)
 }
+\arguments{
+\item{x}{a genotype matrix}
+
+\item{min}{force minimum allele frequency to be 1/nsample}
+}
 \description{
 Calculate allele frequenceies.
 }

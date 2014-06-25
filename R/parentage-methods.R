@@ -45,12 +45,13 @@ function(x, ehet, ehom, verbose=TRUE) {
   # calculate the LOD scores for parents, extract the ML parent
 	lods <- caclulateLODs(pars)
 	mlparents <- lapply(pars, function(l) maxLikelihoodParents(l[[1]]))
-  nloci <- sapply(pars$pars, '[[', 5)
+  nloci <- sapply(pars, '[[', 3)
 
   # use parents slot, since we don't know who mom and dad are
-  x@parents <- data.frame(parent_1=sapply(mlparents, '[', 1),
-                          parent_2=sapply(mlparents, '[', 2))
-  #x@parents$nloci <- nloci
+  x@parents <- data.frame(progeny=seq_len(ncol(kids)),
+                          parent_1=sapply(mlparents, '[', 1),
+                          parent_2=sapply(mlparents, '[', 2),
+                          nloci=nloci)
   # find given mothers that are inconsistent with the one found
 	if (length(mothers)) {
     moms <- sapply(seq_along(mlparents), function(i) {
@@ -61,11 +62,11 @@ function(x, ehet, ehom, verbose=TRUE) {
     ninc <- length(inconsistent_moms)
     if (ninc > 0L)
       warning(sprintf("found %d mothers that are inconsistent", ninc))
-    x@parents$mothers_i <- moms
+    x@parents$which_mother <- moms
 	}
 
   x@parent_lods <- lods
-  return(pars)
+  return(x)
 })
 
 

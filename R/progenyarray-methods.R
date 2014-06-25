@@ -52,14 +52,14 @@ setMethod("show",
               }
               return(ncol(x))
             }
-            nfathers <- numOrNA(object@fathers)
+            #nfathers <- numOrNA(object@fathers)
             nparents <- numOrNA(object@parents_geno)
-            nmothers <- numOrNA(object@mothers, unique=TRUE)
+            #nmothers <- numOrNA(object@mothers, unique=TRUE)
             nprogeny <- numOrNA(object@progeny_geno)
             cat(sprintf("Number of progeny: %d\n", nprogeny))
             cat(sprintf("Number of parents: %d\n", nparents))
-            cat(sprintf("Number of fathers: %d\n", nfathers))
-            cat(sprintf("Number of mothers: %d\n", nmothers))
+            #cat(sprintf("Number of fathers: %d\n", nfathers))
+            #cat(sprintf("Number of mothers: %d\n", nmothers))
             cat(sprintf("Proportion missing:\n  progeny: %0.3f\n  parents: %0.3f\n",
                         sum(is.na(object@progeny_geno))/length(object@progeny_geno),
                         sum(is.na(object@parents_geno))/length(object@parents_geno)))
@@ -89,7 +89,7 @@ setMethod("progenyGenotypes",
             return(x@progeny_geno)
           })
 
-#' Accessor for parents in a ProgenyArray object
+#' Accessor for parents \code{data.frame} in a ProgenyArray object
 #'
 #' @param x a ProgenyArray object
 #' @export
@@ -99,25 +99,36 @@ setMethod("parents",
             return(x@parents)
           })
 
+#' Accessor for user-supplied mothers
+#'
+#' @param x a ProgenyArray object
+#' @export
+setMethod("suppliedMothers",
+          c(x="ProgenyArray"),
+          function(x) {
+            return(x@supplied_mothers)
+          })
 
 #' Accessor for fathers in a ProgenyArray object
 #'
+#' Internally, this references the \code{parents} slot.
 #' @param x a ProgenyArray object
 #' @export
 setMethod("fathers",
           c(x="ProgenyArray"),
           function(x) {
-            return(x@fathers)
+            ifelse(dd$which_mother == 2, dd$parent_1, dd$parent_2)
           })
 
 #' Accessor for mothers in a ProgenyArray object
 #'
+#' Internally, this references the \code{parents} slot.
 #' @param x a ProgenyArray object
 #' @export
 setMethod("mothers",
           c(x="ProgenyArray"),
           function(x) {
-            return(x@mothers)
+            ifelse(dd$which_mother == 1, dd$parent_1, dd$parent_2)
           })
 
 #' Accessor for genomic ranges from a ProgenyArray object
@@ -173,26 +184,37 @@ setMethod("parentNames", "ProgenyArray", function(object) {
   colnames(object@parents_geno)
 })
 
+##
+###' Set method for fathers
+###'
+###' @name fathers
+###' @export
+##setReplaceMethod("fathers", "ProgenyArray", function(object, value) {
+##  if (length(value) != ncol(object@progeny))
+##    stop("length of value must be same as number of progeny")
+##  object@fathers <- value
+##  return(object)
+##})
+##
+###' Set method for mothers
+###'
+###' @name mothers
+###' @export
+##setReplaceMethod("mothers", "ProgenyArray", function(object, value) {
+##  if (length(value) != ncol(object@progeny_geno))
+##    stop("length of value must be same as number of progeny")
+##  object@mothers <- value
+##  return(object)
+##})
 
-#' Set method for fathers
-#'
-#' @name fathers
-#' @export
-setReplaceMethod("fathers", "ProgenyArray", function(object, value) {
-  if (length(value) != ncol(object@progeny))
-    stop("length of value must be same as number of progeny")
-  object@fathers <- value
-  return(object)
-})
-
-#' Set method for mothers
+#' Set method for user suppied-mothers
 #'
 #' @name mothers
 #' @export
-setReplaceMethod("mothers", "ProgenyArray", function(object, value) {
+setReplaceMethod("suppliedMothers", "ProgenyArray", function(object, value) {
   if (length(value) != ncol(object@progeny_geno))
     stop("length of value must be same as number of progeny")
-  object@mothers <- value
+  object@supplied_mothers <- value
   return(object)
 })
 

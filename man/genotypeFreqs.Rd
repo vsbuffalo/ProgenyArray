@@ -5,6 +5,11 @@
 \usage{
 genotypeFreqs(x, counts = FALSE)
 }
+\arguments{
+\item{x}{a genotype matrix}
+
+\item{counts}{whether to return genotype counts rather than frequency}
+}
 \description{
 Calculate genotype frequencies.
 }

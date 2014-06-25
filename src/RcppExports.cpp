@@ -6,39 +6,6 @@
 
 using namespace Rcpp;
 
-// printMendelianMatrices
-void printMendelianMatrices(NumericVector ehetv, NumericVector ehomv, LogicalVector log);
-RcppExport SEXP ProgenyArray_printMendelianMatrices(SEXP ehetvSEXP, SEXP ehomvSEXP, SEXP logSEXP) {
-BEGIN_RCPP
-    {
-        Rcpp::RNGScope __rngScope;
-        Rcpp::traits::input_parameter< NumericVector >::type ehetv(ehetvSEXP );
-        Rcpp::traits::input_parameter< NumericVector >::type ehomv(ehomvSEXP );
-        Rcpp::traits::input_parameter< LogicalVector >::type log(logSEXP );
-        printMendelianMatrices(ehetv, ehomv, log);
-    }
-    return R_NilValue;
-END_RCPP
-}
-// allParentLikelihoods
-List allParentLikelihoods(const IntegerVector progeny, const IntegerMatrix parents, const NumericVector freqs, const NumericVector ehetv, const NumericVector ehomv);
-RcppExport SEXP ProgenyArray_allParentLikelihoods(SEXP progenySEXP, SEXP parentsSEXP, SEXP freqsSEXP, SEXP ehetvSEXP, SEXP ehomvSEXP) {
-BEGIN_RCPP
-    SEXP __sexp_result;
-    {
-        Rcpp::RNGScope __rngScope;
-        Rcpp::traits::input_parameter< const IntegerVector >::type progeny(progenySEXP );
-        Rcpp::traits::input_parameter< const IntegerMatrix >::type parents(parentsSEXP );
-        Rcpp::traits::input_parameter< const NumericVector >::type freqs(freqsSEXP );
-        Rcpp::traits::input_parameter< const NumericVector >::type ehetv(ehetvSEXP );
-        Rcpp::traits::input_parameter< const NumericVector >::type ehomv(ehomvSEXP );
-        List __result = allParentLikelihoods(progeny, parents, freqs, ehetv, ehomv);
-        PROTECT(__sexp_result = Rcpp::wrap(__result));
-    }
-    UNPROTECT(1);
-    return __sexp_result;
-END_RCPP
-}
 // inferParents
 List inferParents(IntegerMatrix progeny, IntegerMatrix parents, NumericVector freqs, NumericVector ehetv, NumericVector ehomv, LogicalVector verbosev);
 RcppExport SEXP ProgenyArray_inferParents(SEXP progenySEXP, SEXP parentsSEXP, SEXP freqsSEXP, SEXP ehetvSEXP, SEXP ehomvSEXP, SEXP verbosevSEXP) {

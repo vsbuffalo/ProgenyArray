@@ -5,6 +5,9 @@
 \usage{
 HW(x)
 }
+\arguments{
+\item{x}{a genotype matrix}
+}
 \description{
 Create dataframe of Hardy-Weinberg values.
 }

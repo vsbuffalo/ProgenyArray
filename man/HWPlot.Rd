@@ -5,6 +5,9 @@
 \usage{
 HWPlot(x)
 }
+\arguments{
+\item{x}{a genotype matrix}
+}
 \description{
 Plot genotype and allele frequencies.
 }

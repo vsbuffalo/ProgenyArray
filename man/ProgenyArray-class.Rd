@@ -19,6 +19,8 @@ An S4 class that stores genotyping data from a progeny array design.
 
 \item{\code{parents_geno}}{a matrix of bialleic parents genotypes}
 
+\item{\code{supplied_mothers}}{integer vector indicating the mother of each progeny, supplied by user}
+
 \item{\code{mothers}}{integer vector indicating the mother of each progeny}
 
 \item{\code{fathers}}{integer vector indicating the father of each progeny}

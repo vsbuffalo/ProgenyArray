@@ -9,6 +9,7 @@
 #' @slot alt alternate alleles
 #' @slot progeny_geno a matrix of bialleic progeny genotypes
 #' @slot parents_geno a matrix of bialleic parents genotypes
+#' @slot supplied_mothers integer vector indicating the mother of each progeny, supplied by user
 #' @slot mothers integer vector indicating the mother of each progeny
 #' @slot fathers integer vector indicating the father of each progeny
 #' @slot complete_loci which loci are complete in the parents
@@ -20,21 +21,21 @@ setClass("ProgenyArray",
                                        alt="CharacterList",
                                        progeny_geno="matrix",
                                        parents_geno="matrix",
+                                       supplied_mothers="integer",
                                        mothers="integer",
                                        fathers="integer",
                                        parents="data.frame",
                                        fathers_lle="list",
                                        complete_loci="integer",
-                                       parent_lods="data.frame",
-                                       inconsistent_mothers="integer"),
+                                       parent_lods="data.frame"),
          prototype=prototype(ranges=GRanges(),
                              ref=character(),
                              alt=CharacterList(),
+                             supplied_mothers=integer(),
                              mothers=integer(),
                              fathers=integer(),
                              parents=data.frame(),
-                             fathers_lle=list(),
-                             inconsistent_mothers=integer()),
+                             fathers_lle=list()),
          validity=function(object) {
            if (nrow(object@progeny_geno) != nrow(object@parents_geno))
              stop("number of progeny loci must equal number of parent loci")
