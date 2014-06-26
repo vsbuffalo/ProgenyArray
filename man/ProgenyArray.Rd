@@ -9,9 +9,11 @@ ProgenyArray(progeny_geno, parents_geno, mothers = integer(),
   loci = GRanges(), ref = character(), alt = CharacterList())
 }
 \arguments{
-\item{progeny_geno}{}
+\item{progeny_geno}{progeny genotypes matrix (all entries should be 0, 1, 2, or NA)}
 
-\item{parents_geno}{}
+\item{parents_geno}{parents genotypes matrix (all entries should be 0, 1, 2, or NA)}
+
+\item{mothers}{user-supplied mothers (e.g. known from collection)}
 
 \item{loci}{a \code{GRanges} object of loci}
 

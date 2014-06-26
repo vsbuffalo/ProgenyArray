@@ -7,7 +7,5 @@ fathers(x, names = TRUE)
 }
 \description{
 Accessor for fathers (returning indices or names)
-
-Set method for fathers
 }
 

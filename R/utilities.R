@@ -12,7 +12,7 @@ setMethod("parentLLPlot", "ProgenyArray", function(x, progeny) {
   lods <- x@parent_lods
   d <- melt(lods[[progeny]][[1]] - lods[[progeny]][[2]])
   p <- ggplot(d) + geom_tile(aes(x=Var1, y=Var2, fill=value))
-  p <- + scale_fill_gradient2("log odds QQ/UU") + xlab("parent 1") + ylab("parent 2")
+  p <- p + scale_fill_gradient2("log odds QQ/UU") + xlab("parent 1") + ylab("parent 2")
   p
 })
 

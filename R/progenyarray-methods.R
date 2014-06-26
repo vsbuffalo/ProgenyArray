@@ -12,8 +12,9 @@ whichLociComplete <- function(x) {
 #' Create a new ProgenyArray object for storing genotyping and other data from
 #' a progeny array experiment.
 #'
-#' @param progeny_geno
-#' @param parents_geno
+#' @param progeny_geno progeny genotypes matrix (all entries should be 0, 1, 2, or NA)
+#' @param parents_geno parents genotypes matrix (all entries should be 0, 1, 2, or NA)
+#' @param mothers user-supplied mothers (e.g. known from collection)
 #' @param loci a \code{GRanges} object of loci
 #' @param ref a character vector of reference loci
 #' @param alt a \code{CharacterList} of alternate loci
@@ -21,7 +22,7 @@ whichLociComplete <- function(x) {
 ProgenyArray <- function(progeny_geno, parents_geno, mothers=integer(),
                          loci=GRanges(), ref=character(), alt=CharacterList()) {
   obj <- new("ProgenyArray", progeny_geno=progeny_geno, parents_geno=parents_geno,
-             mothers=mothers, ranges=loci, ref=ref, alt=alt)
+             supplied_mothers=mothers, ranges=loci, ref=ref, alt=alt)
 
   obj@complete_loci <- whichLociComplete(obj@parents_geno)
   obj
@@ -99,6 +100,19 @@ setMethod("parents",
             return(x@parents)
           })
 
+#' Method to check if individual is selfed
+#'
+#' @param x a ProgenyArray object
+#' @export
+setMethod("isSelfed",
+          c(x="ProgenyArray"),
+          function(x) {
+            if (!length(x@supplied_mothers))
+              stop("this method only works with user-supplied mothers")
+            mothers(x) == fathers(x)
+          })
+
+
 #' Accessor for user-supplied mothers
 #'
 #' @param x a ProgenyArray object
@@ -117,6 +131,7 @@ setMethod("suppliedMothers",
 setMethod("fathers",
           c(x="ProgenyArray"),
           function(x) {
+            dd <- parents(x)
             ifelse(dd$which_mother == 2, dd$parent_1, dd$parent_2)
           })
 
@@ -128,6 +143,7 @@ setMethod("fathers",
 setMethod("mothers",
           c(x="ProgenyArray"),
           function(x) {
+            dd <- parents(x)
             ifelse(dd$which_mother == 1, dd$parent_1, dd$parent_2)
           })
 
@@ -184,33 +200,11 @@ setMethod("parentNames", "ProgenyArray", function(object) {
   colnames(object@parents_geno)
 })
 
-##
-###' Set method for fathers
-###'
-###' @name fathers
-###' @export
-##setReplaceMethod("fathers", "ProgenyArray", function(object, value) {
-##  if (length(value) != ncol(object@progeny))
-##    stop("length of value must be same as number of progeny")
-##  object@fathers <- value
-##  return(object)
-##})
-##
-###' Set method for mothers
-###'
-###' @name mothers
-###' @export
-##setReplaceMethod("mothers", "ProgenyArray", function(object, value) {
-##  if (length(value) != ncol(object@progeny_geno))
-##    stop("length of value must be same as number of progeny")
-##  object@mothers <- value
-##  return(object)
-##})
-
-#' Set method for user suppied-mothers
+#' Set method for supplied mothers
 #'
-#' @name mothers
+#' @name suppliedMothers
 #' @export
+#'
 setReplaceMethod("suppliedMothers", "ProgenyArray", function(object, value) {
   if (length(value) != ncol(object@progeny_geno))
     stop("length of value must be same as number of progeny")
@@ -246,3 +240,10 @@ setReplaceMethod("progenyNames", "ProgenyArray", function(object, value) {
   return(object)
 })
 
+setMethod("parentage", "ProgenyArray", function(x) {
+  if (!length(x@supplied_mothers)) stop("if user-supplied mothers are set, use parents() method")
+  nprogeny <- ncol(x@progeny_geno)
+  nparents <- ncol(x@parents_geno)
+  data.frame(progeny=progenyNames(x)[seq_len(nprogeny)],
+             mothers=parentNames(x)[mothers(x)],
+             fathers=parentNames(x)[fathers(x)]) })

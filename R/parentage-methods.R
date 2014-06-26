@@ -51,6 +51,7 @@ function(x, ehet, ehom, verbose=TRUE) {
   x@parents <- data.frame(progeny=seq_len(ncol(kids)),
                           parent_1=sapply(mlparents, '[', 1),
                           parent_2=sapply(mlparents, '[', 2),
+                          lods=lods,
                           nloci=nloci)
   # find given mothers that are inconsistent with the one found
 	if (length(mothers)) {
@@ -65,7 +66,7 @@ function(x, ehet, ehom, verbose=TRUE) {
     x@parents$which_mother <- moms
 	}
 
-  x@parent_lods <- lods
+  x@parent_lods <- pars
   return(x)
 })
 

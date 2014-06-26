@@ -2,6 +2,12 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
+#' Method to calculate if progeny is selfed
+#'
+setGeneric("isSelfed", function(x) {
+           standardGeneric("isSelfed")
+             })
+
 
 #' Accessor for alternate alleles
 #'
@@ -29,7 +35,7 @@ setGeneric("mothers", function(x, names=TRUE) {
 
 #' Accessor for user-supplied mothers (returning indices or names)
 #'
-setGeneric("suppliedMothers", function(x, names=TRUE) {
+setGeneric("suppliedMothers", function(x) {
            standardGeneric("suppliedMothers")
              })
 
@@ -71,6 +77,7 @@ setGeneric("parentNames", function(object, value) {
              })
 
 #' Create a diagnostic plot of a parentage inference, looking at all log likelihood ratios.
+
 #'
 setGeneric("parentLLPlot", function(x, progeny) {
            standardGeneric("parentLLPlot")
