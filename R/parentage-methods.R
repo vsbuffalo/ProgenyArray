@@ -33,8 +33,7 @@ function(x, ehet, ehom, verbose=TRUE) {
 	freqs <- alleleFreqs(progenyGenotypes(x))[x@complete_loci]
   parents <- parentGenotypes(x)[x@complete_loci, ]
   kids <- progenyGenotypes(x)[x@complete_loci, ]
-  mothers <- mothers(x)
-  pars <- vector("list", ncol(kids)) # for the data from .allParentLikelihoods
+  pars <- vector("list", ncol(kids)) # for ths data from .allParentLikelihoods
   out <- list()
 
   if (verbose)
@@ -54,12 +53,13 @@ function(x, ehet, ehom, verbose=TRUE) {
                           lods=lods,
                           nloci=nloci)
   # find given mothers that are inconsistent with the one found
-	if (length(mothers)) {
+	if (length(x@supplied_mothers)) {
+    mothers <- x@supplied_mothers
     moms <- sapply(seq_along(mlparents), function(i) {
                    match(mothers[i], mlparents[[i]])
                   })
 		inconsistent_moms <- which(is.na(moms))
-    stopifnot(length(moms) == length(mothers))
+    stopifnot(length(moms) == length(x@supplied_mothers))
     ninc <- length(inconsistent_moms)
     if (ninc > 0L)
       warning(sprintf("found %d mothers that are inconsistent", ninc))

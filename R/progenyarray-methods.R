@@ -246,4 +246,5 @@ setMethod("parentage", "ProgenyArray", function(x) {
   nparents <- ncol(x@parents_geno)
   data.frame(progeny=progenyNames(x)[seq_len(nprogeny)],
              mothers=parentNames(x)[mothers(x)],
-             fathers=parentNames(x)[fathers(x)]) })
+             fathers=parentNames(x)[fathers(x)])
+})
