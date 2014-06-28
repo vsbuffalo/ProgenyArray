@@ -115,7 +115,20 @@ setGeneric("fathers<-", function(object, value) {
 
 #' Create parentage dataframe
 #'
-setGeneric("parentage", function(x) {
+setGeneric("parentage", function(x, names=TRUE) {
            standardGeneric("parentage")
              })
+
+#' Setter for LOD cutoff
+#'
+setGeneric("lodcutoff<-", function(object, value) {
+           standardGeneric("lodcutoff<-")
+             })
+
+#' Getter for LOD cutoff
+#'
+setGeneric("lodcutoff", function(x) {
+           standardGeneric("lodcutoff")
+             })
+
 

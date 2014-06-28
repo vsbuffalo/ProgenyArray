@@ -70,6 +70,3 @@ function(x, ehet, ehom, verbose=TRUE) {
   return(x)
 })
 
-
-
-
