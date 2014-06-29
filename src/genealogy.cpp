@@ -176,12 +176,12 @@ probQQUU(const NumericVector freqs, const MTMatrix tmprobs,
     if (!use_locus[i]) continue;
     hwprobs = HWWithError(freqs[i], ehet, ehom, true);
     // P(G | UU)
-    lluu += hwprobs[progeny[i]];
-    lluu += hwprobs[parent_1[i]];
-    lluu += hwprobs[parent_2[i]];
+    lluu += hwprobs(progeny[i]);
+    lluu += hwprobs(parent_1[i]);
+    lluu += hwprobs(parent_2[i]);
     // P(G | QQ)
-    llqq += tmprobs[parent_1[i]](parent_2[i], progeny[i]);
-    llqq += hwprobs[parent_1[i]] + hwprobs[parent_2[i]];
+    llqq += tmprobs[parent_2[i]](parent_1[i], progeny[i]);
+    llqq += hwprobs(parent_1[i]) + hwprobs(parent_2[i]);
   }
   RelatednessProbs out = {llqq, lluu};
   return out;

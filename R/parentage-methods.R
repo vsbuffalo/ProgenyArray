@@ -4,22 +4,27 @@
 
 #' Find the most likely parents
 maxLikelihoodParents <- function(x) {
-	c(row(x)[which.max(x)], col(x)[which.max(x)])
+  c(row(x)[which.max(x)], col(x)[which.max(x)])
 }
 
 #' calculate LODs for QQ/UU and QU/UU, for maximum parent 1 and 2
 caclulateLODs <- function(x) {
-	mlparents <- lapply(x, function(l) maxLikelihoodParents(l[[1]]))
-	# using Meagher and Thompson 1985 comparisons
-	qu_comparisons <- do.call(rbind, lapply(seq_along(mlparents), function(i) {
-														pars <- mlparents[[i]]
-														qq <- x[[i]]$prob_qq
-														#qu <- x[[i]]$prob_qu
-														uu <- x[[i]]$prob_uu
-														data.frame(qq_uu=(qq - uu)[pars[1], pars[2]])
-													 }))
-	d <- qu_comparisons
-	d
+  mlparents <- lapply(x, function(l) maxLikelihoodParents(l[[1]]))
+  mlparents_alt <- lapply(x, function(l) maxLikelihoodParents(l[[1]] - l[[2]))
+  # Are there any cases where the P(G|QQ) max isn't the LOD score max? If so,
+  # error out; this may be a sign that allele freqs (and thus genotype freqs) are
+  # biased/wonky.
+  if (!all(unlist(mlparents) == unlist(mlparents_alt)))
+    stop("internal error: P(G_m,G_f,G_o|QQ) max != LOD score max")
+  # using Meagher and Thompson 1985 comparisons
+  qu_comparisons <- do.call(rbind, lapply(seq_along(mlparents), function(i) {
+                            pars <- mlparents[[i]]
+                            qq <- x[[i]]$prob_qq
+                            uu <- x[[i]]$prob_uu
+                            data.frame(qq_uu=(qq - uu)[pars[1], pars[2]])
+                           }))
+  d <- qu_comparisons
+  d
 }
 
 #' Infer parents of all progeny in a ProgenyArray
@@ -30,7 +35,8 @@ caclulateLODs <- function(x) {
 #' @export
 setMethod("inferParents", c(x="ProgenyArray"),
 function(x, ehet, ehom, verbose=TRUE) {
-	freqs <- alleleFreqs(progenyGenotypes(x))[x@complete_loci]
+  #freqs <- alleleFreqs(progenyGenotypes(x))[x@complete_loci]
+  freqs <- alleleFreqs(parentGenotypes(x)[x@complete_loci, ])
   parents <- parentGenotypes(x)[x@complete_loci, ]
   kids <- progenyGenotypes(x)[x@complete_loci, ]
   pars <- vector("list", ncol(kids)) # for ths data from .allParentLikelihoods
@@ -42,8 +48,8 @@ function(x, ehet, ehom, verbose=TRUE) {
   pars <- .inferParents(kids, parents, freqs, ehet, ehom, verbose)
 
   # calculate the LOD scores for parents, extract the ML parent
-	lods <- caclulateLODs(pars)
-	mlparents <- lapply(pars, function(l) maxLikelihoodParents(l[[1]]))
+  lods <- caclulateLODs(pars)
+  mlparents <- lapply(pars, function(l) maxLikelihoodParents(l[[1]]))
   nloci <- sapply(pars, '[[', 3)
 
   # use parents slot, since we don't know who mom and dad are
@@ -53,18 +59,18 @@ function(x, ehet, ehom, verbose=TRUE) {
                           lods=lods,
                           nloci=nloci)
   # find given mothers that are inconsistent with the one found
-	if (length(x@supplied_mothers)) {
+  if (length(x@supplied_mothers)) {
     mothers <- x@supplied_mothers
     moms <- sapply(seq_along(mlparents), function(i) {
                    match(mothers[i], mlparents[[i]])
                   })
-		inconsistent_moms <- which(is.na(moms))
+    inconsistent_moms <- which(is.na(moms))
     stopifnot(length(moms) == length(x@supplied_mothers))
     ninc <- length(inconsistent_moms)
     if (ninc > 0L)
       warning(sprintf("found %d mothers that are inconsistent", ninc))
     x@parents$which_mother <- moms
-	}
+  }
 
   x@parent_lods <- pars
   return(x)
