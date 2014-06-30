@@ -2,20 +2,14 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
-#' Find the most likely parents
-maxLikelihoodParents <- function(x) {
+#' which.max for matrices
+whichRowColMax <- function(x) {
   c(row(x)[which.max(x)], col(x)[which.max(x)])
 }
 
 #' calculate LODs for QQ/UU and QU/UU, for maximum parent 1 and 2
 caclulateLODs <- function(x) {
-  mlparents <- lapply(x, function(l) maxLikelihoodParents(l[[1]]))
-  mlparents_alt <- lapply(x, function(l) maxLikelihoodParents(l[[1]] - l[[2]))
-  # Are there any cases where the P(G|QQ) max isn't the LOD score max? If so,
-  # error out; this may be a sign that allele freqs (and thus genotype freqs) are
-  # biased/wonky.
-  if (!all(unlist(mlparents) == unlist(mlparents_alt)))
-    stop("internal error: P(G_m,G_f,G_o|QQ) max != LOD score max")
+  mlparents <- lapply(x, function(l) whichRowColMax(l[[1]]))
   # using Meagher and Thompson 1985 comparisons
   qu_comparisons <- do.call(rbind, lapply(seq_along(mlparents), function(i) {
                             pars <- mlparents[[i]]
@@ -49,16 +43,27 @@ function(x, ehet, ehom, verbose=TRUE) {
 
   # calculate the LOD scores for parents, extract the ML parent
   lods <- caclulateLODs(pars)
-  mlparents <- lapply(pars, function(l) maxLikelihoodParents(l[[1]]))
+  mlparents <- lapply(pars, function(l) whichRowColMax(l[[1]]))
+  mlparents_alt <- lapply(pars, function(l) whichRowColMax(l[[1]] - l[[2]]))
+  mla <- paste(sapply(mlparents_alt, '[', 1),
+               sapply(mlparents_alt, '[', 2), sep='-')
+  mldiff <- !mapply(function(x, y) all(sort(x) == sort(y)), mlparents, mlparents_alt)
+  # Are there any cases where the P(G|QQ) max isn't the LOD score max? If so,
+  # send warning; this may be a sign that allele freqs (and thus genotype freqs) are
+  # biased/wonky.
+  same_max <- unlist(mlparents) == unlist(mlparents_alt)
+  if (!all(same_max)) {
+    warning("parents maximizing P(G_m,G_f,G_o|QQ) != parents maximizing LOD score")
+  }
+
   nloci <- sapply(pars, '[[', 3)
 
   # use parents slot, since we don't know who mom and dad are
   x@parents <- data.frame(progeny=seq_len(ncol(kids)),
                           parent_1=sapply(mlparents, '[', 1),
                           parent_2=sapply(mlparents, '[', 2),
-                          lods=lods,
-                          nloci=nloci)
-  # find given mothers that are inconsistent with the one found
+                          lods=lods)
+ # find given mothers that are inconsistent with the one found
   if (length(x@supplied_mothers)) {
     mothers <- x@supplied_mothers
     moms <- sapply(seq_along(mlparents), function(i) {
@@ -70,8 +75,16 @@ function(x, ehet, ehom, verbose=TRUE) {
     if (ninc > 0L)
       warning(sprintf("found %d mothers that are inconsistent", ninc))
     x@parents$which_mother <- moms
+
   }
 
+  # add debugging information
+  debug <- data.frame( # max LOD parents
+                      maxLOD_parents=mla,
+                      # whether the parents maxing P(G|QQ != parents maxing LOD
+                      maxLOD_diff=mldiff,
+                      nloci=nloci)
+  x@parents <- cbind(x@parents, debug)
   x@parent_lods <- pars
   return(x)
 })

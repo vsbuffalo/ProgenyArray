@@ -7,10 +7,14 @@
 // [[Rcpp::depends(RcppEigen)]]
 // [[Rcpp::plugins(cpp11)]]
 
+// Note: frequencies vectors like `freq` always reference alternate allele
+// frequency. Genotypes like 0, 1, 2, are ref/ref ref/alt, alt/alt.
+
 using namespace Rcpp;
 using Eigen::Map;
 using Eigen::Matrix3d;
-using Eigen::Vector3d;
+using Eigen::MatrixXd;
+using Eigen::RowVector3d;
 
 // Store the log probabilities under two relatedness models:
 // two parents fully related (QQ) and unrelated (UU)
@@ -87,9 +91,9 @@ ConditionalTransmissionMatrixWithError(const double freq, const double ehet,
 }
 
 // TODO HERE const
-Vector3d HWWithError(double freq, double ehet, double ehom, bool use_log) {
-  Vector3d hwprobs(pow(1-freq, 2.), 2*freq*(1-freq), pow(freq, 2.));
-  hwprobs = hwprobs.transpose() * GenotypeError(ehet, ehom);
+RowVector3d HWWithError(double freq, double ehet, double ehom, bool use_log) {
+  RowVector3d hwprobs(pow(1-freq, 2.), 2*freq*(1-freq), pow(freq, 2.));
+  hwprobs = hwprobs * GenotypeError(ehet, ehom);
   if (use_log)
     hwprobs = hwprobs.array().log().matrix();
   return hwprobs;
@@ -164,23 +168,24 @@ Vector3d HWWithError(double freq, double ehet, double ehom, bool use_log) {
 //}
 //
 // Calculate probability of both QQ and UU simultaneously (decreases number of
-// iterations
+// iterations). This assumes observed paternal and maternal genotypes are correct
+// in transmission, but spreads some probability around in genotype frequencies.
 RelatednessProbs
-probQQUU(const NumericVector freqs, const MTMatrix tmprobs,
-         const IntegerVector progeny,
+probQQUU(const NumericVector freqs, const MatrixXd &genofreqs,
+         const MTMatrix &tmprobs, const IntegerVector progeny,
          const IntegerMatrix::Column parent_1, const IntegerMatrix::Column parent_2,
          const double ehet, const double ehom, const LogicalVector use_locus) {
   double llqq = 0, lluu = 0;
-  Vector3d hwprobs;
-  for (int i = 0; i < progeny.size(); i++) {
+  RowVector3d hwprobs;
+  for (int i = 0; i < progeny.length(); i++) {
     if (!use_locus[i]) continue;
-    hwprobs = HWWithError(freqs[i], ehet, ehom, true);
+    hwprobs = genofreqs.row(i);
     // P(G | UU)
     lluu += hwprobs(progeny[i]);
     lluu += hwprobs(parent_1[i]);
     lluu += hwprobs(parent_2[i]);
     // P(G | QQ)
-    llqq += tmprobs[parent_2[i]](parent_1[i], progeny[i]);
+    llqq += tmprobs[parent_1[i]](parent_2[i], progeny[i]);
     llqq += hwprobs(parent_1[i]) + hwprobs(parent_2[i]);
   }
   RelatednessProbs out = {llqq, lluu};
@@ -193,7 +198,8 @@ probQQUU(const NumericVector freqs, const MTMatrix tmprobs,
 // handles calculating a progeny's set of complete loci (e.g. not NA) that can
 // be used for the parent likelihoods calculations
 List parentageLikelihoods(const NumericVector freqs,
-                          const MTMatrix tmprobs,
+                          const MatrixXd &genofreqs,
+                          const MTMatrix &tmprobs,
                           const IntegerVector progeny,
                           const IntegerMatrix parents,
                           const double ehet,
@@ -217,7 +223,7 @@ List parentageLikelihoods(const NumericVector freqs,
     IntegerMatrix::Column par_1 = parents(_, p1);
     for (int p2 = p1; p2 < nparents; p2++) {
       IntegerMatrix::Column par_2 = parents(_, p2);
-      relprobs = probQQUU(freqs, tmprobs, progeny, par_1, par_2,
+      relprobs = probQQUU(freqs, genofreqs, tmprobs, progeny, par_1, par_2,
                           ehet, ehom, complete_loci);
       prob_qq(p1, p2) = relprobs.qq;
       prob_uu(p1, p2) = relprobs.uu;
@@ -225,6 +231,16 @@ List parentageLikelihoods(const NumericVector freqs,
   }
   return List::create(_["prob_qq"]=prob_qq, _["prob_uu"]=prob_uu,
                       _["nloci"]=nloci_used);
+}
+
+// Calculate the HW genotype frequencies with error for all loci, with error
+MatrixXd HWWithErrorMatrix(const NumericVector freqs, double ehet, double ehom,
+                           const bool use_log) {
+  MatrixXd genofreqs(freqs.length(), 3);
+  for (int i = 0; i < freqs.length(); i++) {
+    genofreqs.row(i) = HWWithError(freqs[i], ehet, ehom, use_log);
+  }
+  return genofreqs;
 }
 
 // Calculate the likelihoods of each parent under different models of
@@ -238,20 +254,24 @@ List inferParents(IntegerMatrix progeny, IntegerMatrix parents, NumericVector
 
   double ehet = ehetv[0], ehom = ehomv[0];
   MTMatrix tmprobs;
+  MatrixXd genofreqs;
   int nprogeny = progeny.ncol();
   List calls;
   bool verbose = verbosev[0];
 
   tmprobs = MendelianTransmissionWithErrorMatrix(ehet, ehom, true);
+  genofreqs = HWWithErrorMatrix(freqs, ehet, ehom, true);
 
   for (int p = 0; p < nprogeny; p++) {
     checkUserInterrupt();
     IntegerMatrix::Column kid = progeny(_, p);
     if (verbose)
       std::cout << "\t" << p << "/" << nprogeny << " progeny completed\r" << std::flush;
-    calls.push_back(parentageLikelihoods(freqs, tmprobs, kid, parents, ehet, ehom));
+    calls.push_back(parentageLikelihoods(freqs, genofreqs, tmprobs, kid, parents, ehet, ehom));
   }
   if (verbose)
     std::cout << std::endl;
   return calls;
 }
+
+
