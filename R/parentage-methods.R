@@ -43,8 +43,9 @@ function(x, ehet, ehom, verbose=TRUE) {
 
   # calculate the LOD scores for parents, extract the ML parent
   lods <- caclulateLODs(pars)
-  mlparents <- lapply(pars, function(l) whichRowColMax(l[[1]]))
+  #mlparents <- lapply(pars, function(l) whichRowColMax(l[[1]]))
   mlparents_alt <- lapply(pars, function(l) whichRowColMax(l[[1]] - l[[2]]))
+  mlparents <- lapply(pars, function(l) whichRowColMax(l[[1]] - l[[2]]))
   mla <- paste(sapply(mlparents_alt, '[', 1),
                sapply(mlparents_alt, '[', 2), sep='-')
   mldiff <- !mapply(function(x, y) all(sort(x) == sort(y)), mlparents, mlparents_alt)

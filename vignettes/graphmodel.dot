@@ -1,0 +1,16 @@
+digraph structure {
+  gmp [texlbl="$g_m^\prime$"]
+  gfp [texlbl="$g_f^\prime$"]
+  gm [texlbl="$g_m$"]
+  gf [texlbl="$g_f$"]
+  go [texlbl="$g_o$"]
+  gop [texlbl="$g_o^\prime$"]
+
+  gmp -> gm [dir=back, color="blue"]
+  gfp -> gf [dir=back, color="blue"]
+  gm -> go [color="orange"]
+  gf -> go [color="orange"]
+  go -> gop [color="blue"]
+  {rank=same; gmp; gfp}
+  {rank=same; gm; gf}
+}

@@ -1,0 +1,196 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage[authoryear,round,longnamesfirst]{natbib}
+\usepackage[x11names, rgb]{xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usetikzlibrary{snakes,arrows,shapes}
+\usepackage{hyperref}
+\hypersetup{
+colorlinks=true
+}
+
+\renewcommand{\P}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+
+\title{
+Progeny Array Statistical Genetics Methods
+}
+
+\author{
+Vince Buffalo
+}
+
+\begin{document}
+\maketitle
+
+\section{Parentage Inference Methods}
+
+Parentage inference methods are inspired by those from \citet{meagher1986},
+which are reviewed in \citet{marshall1998}. The major difference in our model
+is the incorporation of an error model that allows for different error rates
+for heterozygous and homozygous genotypes. We'll step through Meagher and
+Thompson's original model before deriving the model with error.
+
+\subsection{Original Model (without Genotyping Error)}
+
+\citeauthor{meagher1986}'s basic model is to evaluate the relatedness of three
+individuals, $M$, $F$, and $O$, using a likelihood calculated from the joint
+probability of these individuals' genotypes. Here, $M$, $F$, and $O$ represent
+alleged mother, alleged father, and offspring, respectively. For each loci, we
+calculate the probability of these individuals' genotypes $g_m$, $g_f$, and
+$g_o$ (respectively) under two pedigree models: that $M$ and $F$ are the
+parents of $O$, and that $M$, $F$, and $O$ are all unrelated individuals.
+Following Meagher and Thompson's notation, these two relationships are denoted
+$QQ$ and $UU$. Another possible relationship between these individuals is that
+neither $M$ or $F$ is a parent of $O$; we denote this as $QU$ (we'll skip
+including this possibility for now). Thus, for a single locus the joint
+probability of genotypes $g_m$, $g_m$, and $g_o$ given that individuals $M$ and
+$F$ are $O$'s parents is:
+
+$$ P(g_m, g_f, g_o | QQ) = T(g_o | g_m, g_f) P(g_m) P(g_f) $$
+
+(from \citealt{meagher1986}). Here, $T(g_o | g_m, g_f)$ is the
+Mendelian transmission matrix --- essentially a conditional probability matrix.
+$P(g_m)$ and $P(g_f)$ are the probability of the observed genotypes for mother
+and father. Assuming random mating, these are just the Hardy-Weinberg genotype
+probabilities. For any genotype with alternate allele frequency $p$, the vector
+$\mathbf{h}$ encodes the genotype probabilities under Hardy-Weinberg:
+
+$$
+\mathbf{h} = \left[ \begin{array}{c}
+(1 - p)^2 \\
+2p(1-p) \\
+p^2 \\
+\end{array} \right]
+$$
+
+\subsection{Genotype Likelihoods with Error}
+
+At this point, this model assumes $g_m$, $g_f$, and $g_o$ are known with
+certainty. In reality, the true genotypes $g_m$, $g_f$, and $g_o$ are hidden
+and only the genotypes with error $g_m'$, $g_f'$, and $g_o'$ are observed.
+Graphically, this is depicted in \autoref{fig:dag}.
+
+\begin{figure}
+\centering
+\begingroup
+\tikzset{every picture/.style={scale=0.8}}%
+% dot -Txdot graphmodel.dot | dot2tex -tmath --figpreamble="\Large" --figonly > graphmodel.tex
+\input{graphmodel.tex}
+\endgroup
+
+\caption{A directed graph model with hidden genotype variables $g_m$, $g_f$,
+and $g_o$, and observed genotypes $g_m'$, $g_f'$, and $g_o'$.}
+
+\label{fig:dag}
+
+\end{figure}
+
+To model genotyping errors, we derive an expression for $P(g_m', g_f', g_o')$
+(given $QQ$) that marginalizes over the hidden genotype variables $g_m$, $g_f$,
+and $g_o$. So,
+
+$$
+P(g_m', g_f', g_o') = \sum_{g_m,g_f,g_o \in \Omega} P(g_m', g_f', g_o' | g_m, g_f, g_o) P(g_m, g_f, g_o)
+$$
+
+The advantage of this approach is that we know through Mendelian transmission
+and Hardy-Weinberg that the component $P(g_m, g_f, g_o) = T(g_o | g_m, g_f)
+P(g_m) P(g_f)$, so,
+
+$$
+P(g_m', g_f', g_o') = \sum_{g_m,g_f,g_o \in \Omega} P(g_m', g_f', g_o' | g_m, g_f, g_o) T(g_o | g_m, g_f) P(g_m) P(g_f)
+$$
+
+Now, $P(g_m', g_f', g_o' | g_m, g_f, g_o)$ seems complex, but each of these
+observed genotypes conditioned on the real genotype is independent of the
+others. For example, $g_o' \perp\!\!\!\perp g_m'\; | \;g_m$, meaning that
+knowing $g_m'$ doesn't provide any information about the observed offspring's
+genotype $g_o'$ given that we know $g_m$. This allows us to say $P(g_m', g_f',
+g_o' | g_m, g_f, g_o) = P(g_m' | g_m) P(g_f'|g_f) P(g_o'|g_o)$. So:
+
+$$
+P(g_m', g_f', g_o') = \sum_{g_m,g_f,g_o \in \Omega} P(g_m' | g_m) P(g_f'|g_f) P(g_o'|g_o) T(g_o | g_m, g_f) P(g_m) P(g_f)
+$$
+
+%Rearranging to make this equation's connection with the graph model clear:
+%
+%$$
+%P(g_m', g_f', g_o') = \sum_{g_m,g_f,g_o \in \Omega} P(g_o'|g_o) T(g_o | g_m, g_f) P(g_m) P(g_m' | g_m) P(g_f) P(g_f'|g_f)
+%$$
+%
+Every component of this model is now tractable. Our error model enters through
+the stochastic transition matrix $\mathbf{E}$ for any true, latent genotype $g$
+to an observed genotype $g'$:
+
+$$
+\mathbf{E} = P(g'|g) = \left[ \begin{array}{ccc}
+1 - e & e/2 & e/2 \\
+\epsilon/2 & 1 - \epsilon & \epsilon/2 \\
+e/2 & e/2 & 1 - e \\
+\end{array} \right]
+$$
+
+Where $e$ is the homozygous error rate and $\epsilon$ is the heterozygous error
+rate. This error model is similar to models in which the probability of error
+is distributed uniformly over the two erroneous genotypes
+\citep*{sobel2002detection,lincoln1992systematic}.
+
+Extending this to all loci is trivial; we assume independence across loci, so
+for all loci we sum the log probability. Allowing locus $l$'s joint probability
+to be written as $P(g_{m,l}', g_{f,l}', g_{o,l}')$, the probability of $M$ and
+$F$ being $O$'s parents is:
+
+$$
+P(G_m', G_f', G_o' | QQ) = \sum_{l \in L} \log P(g_{m,l}', g_{f,l}', g_{o,l}')
+$$
+
+%
+%The sum is taken over all possible combinations of $g_m$, $g_f$, $g_o$. Due to
+%exclusion some of these have zero probability. Since we assume biallelic loci,
+%there are three possible genotypes at each locus, so this is a sum of $3^3 =
+
+%27$ terms. However, due to exclusion twelve of these transmission
+%probabilities are zero (e.g. when mother is 0/0 and father is 1/1, progeny
+%must be 0/1).
+%
+%
+\subsection{Parental Genotype Imputation}
+
+\begin{figure}
+\centering
+\begingroup
+\tikzset{every picture/.style={scale=0.6}}%
+% dot -Txdot parent-imput.dot | dot2tex -tmath --figpreamble="\Large" --figonly > parent-imput.tex
+\input{parent-imput.tex}
+\endgroup
+
+\caption{A half-sib (with shared mother) with five offspring.}
+
+\label{fig:dag}
+
+\end{figure}
+
+\begin{equation}
+  P(g_m, g_{o,.}') = \prod_{i = 1}^n \sum_{o \in \Omega} P(g_{o,i}' | g_{o,i}) P(g_{o,i} | g_{m}) P(g_m)
+\end{equation}
+
+%
+%\begin{equation*}
+%  P(g_m | g_o{o,.}') = \frac{P(g_m, g_{o,.}')}{P(g_{o,.}')}
+%\end{equation*}
+%
+
+\subsection{Parental Haplotype Inference}
+
+
+
+\bibliographystyle{plainnat}
+\bibliography{methods}
+
+\end{document}

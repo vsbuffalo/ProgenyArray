@@ -1,0 +1,28 @@
+digraph parent_impute {
+  node [fixedsize=shape]
+  gmp [texlbl="$g_m^\prime$"]
+  gm [texlbl="$g_m$"]
+  go1 [texlbl="$g_{o,1}$"]
+  go2 [texlbl="$g_{o,2}$"]
+  go3 [texlbl="$g_{o,3}$"]
+  go4 [texlbl="$g_{o,4}$"]
+  go5 [texlbl="$g_{o,5}$"]
+  gop1 [texlbl="$g_{o,1}^\prime$"]
+  gop2 [texlbl="$g_{o,2}^\prime$"]
+  gop3 [texlbl="$g_{o,3}^\prime$"]
+  gop4 [texlbl="$g_{o,4}^\prime$"]
+  gop5 [texlbl="$g_{o,5}^\prime$"]
+
+  gmp -> gm [dir=back, color="blue"]
+  gm -> go1 [color="orange"]
+  gm -> go2 [color="orange"]
+  gm -> go3 [color="orange"]
+  gm -> go4 [color="orange"]
+  gm -> go5 [color="orange"]
+  go1 -> gop1 [color="blue"]
+  go2 -> gop2 [color="blue"]
+  go3 -> gop3 [color="blue"]
+  go4 -> gop4 [color="blue"]
+  go5 -> gop5 [color="blue"]
+}
+

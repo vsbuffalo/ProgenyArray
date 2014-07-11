@@ -131,4 +131,10 @@ setGeneric("lodcutoff", function(x) {
            standardGeneric("lodcutoff")
              })
 
+#### Generics for SimulationData
+
+#' Getter for ProgenyArray object from a SimulationData object
+setGeneric("progenyArray", function(x) {
+           standardGeneric("progenyArray")
+          })
 

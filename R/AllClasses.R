@@ -43,3 +43,48 @@ setClass("ProgenyArray",
              stop("number of progeny loci must equal number of parent loci")
          })
 
+#' An S4 class that wraps a ProgenyArray object of noisy, missing data
+#'
+#' @slot nparent parent population size
+#' @slot nprogeny progeny population size
+#' @slot nloci number of loci
+#' @slot prop_parent_missing proportion of genotype data that are missing in parents
+#' @slot prop_progeny_missing proportion of genotype data that are missing in progeny
+#' @slot ehet heterozygous error rate
+#' @slot ehom homozygous error rate
+#' @slot progeny_geno full genotype matrix for progeny
+#' @slot parent_geno full genotype matrix for parents
+#' @slot mothers true mothers of each progeny
+#' @slot fathers true mothers of each progeny
+#' @slot progeny_array ProgenyArray object of these data, with missing values and errors
+#'
+#' @exportClass SimulatedProgenyArray
+setClass("SimulatedProgenyArray",
+         representation=representation(nparent="integer",
+                                       nprogeny="integer",
+                                       nloci="integer",
+                                       selfing="numeric",
+                                       prop_parent_missing="numeric",
+                                       prop_progeny_missing="numeric",
+                                       ehet="numeric",
+                                       ehom="numeric",
+                                       # the full, non-missing genotype matrices
+                                       parent_geno="matrix",
+                                       progeny_geno="matrix",
+                                       mothers="integer",
+                                       fathers="integer",
+                                       progeny_array="ProgenyArray"),
+         prototype=prototype(nparent=integer(),
+                             nprogeny=integer(),
+                             nloci=integer(),
+                             selfing=numeric(),
+                             prop_parent_missing=numeric(),
+                             prop_progeny_missing=numeric(),
+                             ehet=numeric(),
+                             ehom=numeric(),
+                             # the full, non-missing genotype matrices
+                             parent_geno=matrix(),
+                             progeny_geno=matrix(),
+                             mothers=integer(),
+                             fathers=integer()))
+
