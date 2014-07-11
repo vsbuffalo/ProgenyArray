@@ -176,9 +176,29 @@ $$
 
 \end{figure}
 
+$$
+P(g_m, g_{o,.}') = P(g_m) \prod_{i = 1}^n P(g_{o,i}' | g_m)
+$$
+
+$$
+P(g_m, g_{o,.}') = P(g_m) \prod_{i = 1}^n \sum_{g_o \in \Omega} P(g_{o,i}', g_{o,i} | g_m)
+$$
+
+$$
+P(g_m, g_{o,.}') = P(g_m) \prod_{i = 1}^n \sum_{g_o \in \Omega} P(g_{o,i}', g_{o,i} | g_m)
+$$
+
+%$$
+%P(g_m, g_{o,.}') = P(g_m) P(g_{o,.}' | g_m)
+%$$
+
 \begin{equation}
-  P(g_m, g_{o,.}') = \prod_{i = 1}^n \sum_{o \in \Omega} P(g_{o,i}' | g_{o,i}) P(g_{o,i} | g_{m}) P(g_m)
+  P(g_m, g_{o,.}') = P(g_m) \prod_{i = 1}^n \sum_{g_o \in \Omega} P(g_{o,i}' | g_{o,i}) P(g_{o,i} | g_{m})
 \end{equation}
+
+The form of this model is similar to a naive Bayesian model
+(\citealt{koller2009}, p. 50), with an added layer of uncertainty from true
+offspring genotypes to observed offspring genotypes.
 
 %
 %\begin{equation*}
