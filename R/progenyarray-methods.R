@@ -7,6 +7,12 @@ whichLociComplete <- function(x) {
   which(apply(!is.na(x), 1, all))
 }
 
+#' Which loci are not fixed
+whichLociPolymorphic <- function(x) {
+  freq <- alleleFreqs(x)
+  which(freq > 0 & freq < 1)
+}
+
 #' Constructor new ProgenyArray object.
 #'
 #' Create a new ProgenyArray object for storing genotyping and other data from
@@ -25,6 +31,9 @@ ProgenyArray <- function(progeny_geno, parents_geno, mothers=integer(),
              supplied_mothers=mothers, ranges=loci, ref=ref, alt=alt)
 
   obj@complete_loci <- whichLociComplete(obj@parents_geno)
+  not_fixed <- whichLociPolymorphic(obj@parents_geno)
+  message(sprintf("%d loci are fixed", nrow(obj@progeny_geno) - length(not_fixed)))
+  obj@complete_loci <- intersect(obj@complete_loci, not_fixed)
   obj
 }
 

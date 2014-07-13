@@ -86,6 +86,24 @@ SimulatedProgenyArray <- function(nparent, nprogeny, nloci, selfing=0.5,
       progeny_array=pa)
 }
 
+setMethod("inferParents", "SimulatedProgenyArray", function(x, ehet, ehom, verbose=FALSE) {
+  x@progeny_array <- inferParents(x@progeny_array, ehet, ehom, verbose)
+  x
+})
+
+numCorrectParents <- function(real, inferred) {
+  mapply(function(x, y) length(intersect(x, y)), real, inferred)
+}
+
+correctParentCounts <- function(real, inferred) {
+  ff <- factor(numCorrectParents(real, inferred),
+               levels=c(0, 1, 2))
+  tbl <- table(ff)
+  tbl
+}
+
+
+
 setMethod("show", "SimulatedProgenyArray", function(object) {
   o <- object
   cat(sprintf("SimulatedProgenyArray object: %d loci, %d parents, %d progeny\n",
@@ -98,6 +116,20 @@ setMethod("show", "SimulatedProgenyArray", function(object) {
   cat(sprintf("  homozygous error: %0.3f\n", o@ehom))
   cat("*** Internal ProgenyArray Object ***\n")
   show(o@progeny_array)
+  cat("*** Parentage Accuracy ***\n")
+  if (nrow(progenyArray(o)@parents) > 0) {
+    #mc <- sum(o@mothers == mothers(progenyArray(o)))
+    #fc <- sum(o@fathers == fathers(progenyArray(o)))
+    n <- ncol(o@progeny_geno)
+    #cat(sprintf("%d/%d (%0.0f%%) mothers correct\n", mc, n, 100*mc/n))
+    #cat(sprintf("%d/%d (%0.0f%%) fathers correct\n", fc, n, 100*fc/n))
+    real <- split(cbind(o@mothers, o@fathers), seq_len(n))
+    inferred <- split(o@progeny_array@parents[, 2:3], seq_len(n))
+    tbl <- prop.table(correctParentCounts(real, inferred))
+    cat(sprintf("prop parents correct:\n"))
+    cat(sprintf("  0    1    2\n"))
+    cat(sprintf("%0.2f %0.2f %0.02f\n", tbl[1], tbl[2], tbl[3]))
+  }
 })
 
 

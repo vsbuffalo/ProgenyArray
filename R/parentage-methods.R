@@ -9,7 +9,8 @@ whichRowColMax <- function(x) {
 
 #' calculate LODs for QQ/UU and QU/UU, for maximum parent 1 and 2
 caclulateLODs <- function(x) {
-  mlparents <- lapply(x, function(l) whichRowColMax(l[[1]]))
+  mlparents <- lapply(x, function(l) whichRowColMax(l[[1]] - l[[2]]))
+  #mlparents <- lapply(x, function(l) whichRowColMax(l[[1]]))
   # using Meagher and Thompson 1985 comparisons
   qu_comparisons <- do.call(rbind, lapply(seq_along(mlparents), function(i) {
                             pars <- mlparents[[i]]
@@ -31,6 +32,7 @@ setMethod("inferParents", c(x="ProgenyArray"),
 function(x, ehet, ehom, verbose=TRUE) {
   #freqs <- alleleFreqs(progenyGenotypes(x))[x@complete_loci]
   freqs <- alleleFreqs(parentGenotypes(x)[x@complete_loci, ])
+  stopifnot(all(freqs > 0 & freqs < 1)) # nothing fixed
   parents <- parentGenotypes(x)[x@complete_loci, ]
   kids <- progenyGenotypes(x)[x@complete_loci, ]
   pars <- vector("list", ncol(kids)) # for ths data from .allParentLikelihoods
@@ -43,19 +45,8 @@ function(x, ehet, ehom, verbose=TRUE) {
 
   # calculate the LOD scores for parents, extract the ML parent
   lods <- caclulateLODs(pars)
-  #mlparents <- lapply(pars, function(l) whichRowColMax(l[[1]]))
-  mlparents_alt <- lapply(pars, function(l) whichRowColMax(l[[1]] - l[[2]]))
   mlparents <- lapply(pars, function(l) whichRowColMax(l[[1]] - l[[2]]))
-  mla <- paste(sapply(mlparents_alt, '[', 1),
-               sapply(mlparents_alt, '[', 2), sep='-')
-  mldiff <- !mapply(function(x, y) all(sort(x) == sort(y)), mlparents, mlparents_alt)
-  # Are there any cases where the P(G|QQ) max isn't the LOD score max? If so,
-  # send warning; this may be a sign that allele freqs (and thus genotype freqs) are
-  # biased/wonky.
-  same_max <- unlist(mlparents) == unlist(mlparents_alt)
-  if (!all(same_max)) {
-    warning("parents maximizing P(G_m,G_f,G_o|QQ) != parents maximizing LOD score")
-  }
+  #mlparents <- lapply(pars, function(l) whichRowColMax(l[[1]]))
 
   nloci <- sapply(pars, '[[', 3)
 
@@ -71,7 +62,7 @@ function(x, ehet, ehom, verbose=TRUE) {
                    match(mothers[i], mlparents[[i]])
                   })
     inconsistent_moms <- which(is.na(moms))
-    stopifnot(length(moms) == length(x@supplied_mothers))
+    #stopifnot(length(moms) == length(x@supplied_mothers))
     ninc <- length(inconsistent_moms)
     if (ninc > 0L)
       warning(sprintf("found %d mothers that are inconsistent", ninc))
@@ -80,11 +71,7 @@ function(x, ehet, ehom, verbose=TRUE) {
   }
 
   # add debugging information
-  debug <- data.frame( # max LOD parents
-                      maxLOD_parents=mla,
-                      # whether the parents maxing P(G|QQ != parents maxing LOD
-                      maxLOD_diff=mldiff,
-                      nloci=nloci)
+  debug <- data.frame(nloci=nloci)
   x@parents <- cbind(x@parents, debug)
   x@parent_lods <- pars
   return(x)
