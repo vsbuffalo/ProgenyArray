@@ -166,7 +166,7 @@ MatrixXd HWLociMatrixWithError(const NumericVector freqs,
   }
   if (use_log)
     genofreqs = genofreqs.array().log().matrix();
-  std::cout << genofreqs << std::endl;
+  //std::cout << genofreqs << std::endl;
   return genofreqs;
 }
 

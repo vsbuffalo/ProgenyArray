@@ -102,7 +102,13 @@ correctParentCounts <- function(real, inferred) {
   tbl
 }
 
-
+propCorrectParents <- function(x) {
+  n <- ncol(x@progeny_geno)
+  real <- split(cbind(x@mothers, x@fathers), seq_len(n))
+  inferred <- split(x@progeny_array@parents[, 2:3], seq_len(n))
+  tbl <- prop.table(correctParentCounts(real, inferred))
+  unname(tbl[3])
+}
 
 setMethod("show", "SimulatedProgenyArray", function(object) {
   o <- object
