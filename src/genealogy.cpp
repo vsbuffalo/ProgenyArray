@@ -84,7 +84,7 @@ RelatednessProbs probQQUU(const MatrixXd &genofreqs,
     const IntegerMatrix::Column parent_1, const IntegerMatrix::Column parent_2,
     const Matrix3d &errors, const LogicalVector use_locus) {
   double llqq = 0, lluu = 1;
-  double m, f, p;
+  double p;
   RowVector3d hwprobs, log_hwprobs_error;
   for (int i = 0; i < progeny.length(); i++) { // for all loci
     if (!use_locus[i]) continue;
