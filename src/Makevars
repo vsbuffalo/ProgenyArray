@@ -1,0 +1,2 @@
+CXX_STD = CXX11
+CXXFLAGS= -stdlib=libc++ -std=c++11
