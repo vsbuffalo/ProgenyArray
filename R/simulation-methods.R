@@ -54,13 +54,14 @@ addMissingness <- function(x, rate) {
 
 #' Create some simulation data
 #'
-#' @param nparent
-#' @param nprogeny
-#' @param nloci
-#' @param prop_parent_missing
-#' @param prop_progeny_missing
-#' @param ehet
-#' @param ehom
+#' @param nparent number of parents
+#' @param nprogeny number of progeny
+#' @param nloci number of loci
+#' @param selfing selfing rate
+#' @param prop_parent_missing proportion of random missing data in parents
+#' @param prop_progeny_missing proportion of random missing data in progeny
+#' @param ehet heterozygous error rate
+#' @param ehom homozygous error rate
 #'
 #' @export
 SimulatedProgenyArray <- function(nparent, nprogeny, nloci, selfing=0.5,
@@ -86,6 +87,11 @@ SimulatedProgenyArray <- function(nparent, nprogeny, nloci, selfing=0.5,
       progeny_array=pa)
 }
 
+#' Infer parents for SimulatedProgenyArray
+#'
+#' @param x a SimulatedProgenyArray object
+#' @param ehet heterozygous error rate
+#' @param ehom homozygous error rate
 setMethod("inferParents", "SimulatedProgenyArray", function(x, ehet, ehom, verbose=FALSE) {
   x@progeny_array <- inferParents(x@progeny_array, ehet, ehom, verbose)
   x

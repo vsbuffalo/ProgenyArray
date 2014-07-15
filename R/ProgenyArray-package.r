@@ -1,11 +1,14 @@
 #' ProgenyArray.
+
 #'
 #' @name ProgenyArray
 #' @docType package
-#' @importFrom IRanges IntegerList CharacterList
 #' @import methods
-#' @import testthat
+#' @import ggplot2
+#' @import GenomicRanges
+#' @importFrom reshape2 melt
 #' @importMethodsFrom Biobase samples
 #' @useDynLib ProgenyArray
+#' @importFrom Rcpp sourceCpp
 NULL
 

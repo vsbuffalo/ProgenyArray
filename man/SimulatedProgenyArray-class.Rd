@@ -15,6 +15,8 @@ An S4 class that wraps a ProgenyArray object of noisy, missing data
 
 \item{\code{nloci}}{number of loci}
 
+\item{\code{selfing}}{selfing rate}
+
 \item{\code{prop_parent_missing}}{proportion of genotype data that are missing in parents}
 
 \item{\code{prop_progeny_missing}}{proportion of genotype data that are missing in progeny}

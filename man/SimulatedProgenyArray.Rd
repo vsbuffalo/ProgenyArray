@@ -8,19 +8,21 @@ SimulatedProgenyArray(nparent, nprogeny, nloci, selfing = 0.5,
   ehom = 0.1)
 }
 \arguments{
-\item{nparent}{}
+\item{nparent}{number of parents}
 
-\item{nprogeny}{}
+\item{nprogeny}{number of progeny}
 
-\item{nloci}{}
+\item{nloci}{number of loci}
 
-\item{prop_parent_missing}{}
+\item{selfing}{selfing rate}
 
-\item{prop_progeny_missing}{}
+\item{prop_parent_missing}{proportion of random missing data in parents}
 
-\item{ehet}{}
+\item{prop_progeny_missing}{proportion of random missing data in progeny}
 
-\item{ehom}{}
+\item{ehet}{heterozygous error rate}
+
+\item{ehom}{homozygous error rate}
 }
 \description{
 Create some simulation data

@@ -11,13 +11,13 @@ setGeneric("isSelfed", function(x) {
 
 #' Accessor for alternate alleles
 #'
-setGeneric("alt", function(x, as_char=TRUE) {
+setGeneric("alt", function(x) {
            standardGeneric("alt")
              })
 
 #' Accessor for reference alleles
 #'
-setGeneric("ref", function(x, as_char=TRUE) {
+setGeneric("ref", function(x) {
            standardGeneric("ref")
              })
 
@@ -66,18 +66,17 @@ setGeneric("inferParents", function(x, ehet, ehom, verbose=FALSE) {
 
 #' Accessor for progeny sample names
 #'
-setGeneric("progenyNames", function(object, value) {
+setGeneric("progenyNames", function(x) {
            standardGeneric("progenyNames")
              })
 
 #' Accessor for parents sample names
 #'
-setGeneric("parentNames", function(object, value) {
+setGeneric("parentNames", function(x) {
            standardGeneric("parentNames")
              })
 
 #' Create a diagnostic plot of a parentage inference, looking at all log likelihood ratios.
-
 #'
 setGeneric("parentLLPlot", function(x, progeny) {
            standardGeneric("parentLLPlot")
@@ -85,43 +84,43 @@ setGeneric("parentLLPlot", function(x, progeny) {
 
 #' Setter for progeny sample names
 #'
-setGeneric("progenyNames<-", function(object, value) {
+setGeneric("progenyNames<-", function(x, value) {
            standardGeneric("progenyNames<-")
              })
 
 #' Setter for parents sample names
 #'
-setGeneric("parentNames<-", function(object, value) {
+setGeneric("parentNames<-", function(x, value) {
            standardGeneric("parentNames<-")
              })
 
 #' Accessor for user-supplied mothers
 #'
-setGeneric("suppliedMothers<-", function(object, value) {
+setGeneric("suppliedMothers<-", function(x, value) {
            standardGeneric("suppliedMothers<-")
              })
 
-#' Accessor for mothers
+#' Setter for mothers
 #'
-setGeneric("mothers<-", function(object, value) {
+setGeneric("mothers<-", function(x, value) {
            standardGeneric("mothers<-")
              })
 
-#' Accessor for fathers
+#' Setter for fathers
 #'
-setGeneric("fathers<-", function(object, value) {
+setGeneric("fathers<-", function(x, value) {
            standardGeneric("fathers<-")
              })
 
 #' Create parentage dataframe
 #'
-setGeneric("parentage", function(x, names=TRUE) {
+setGeneric("parentage", function(x) {
            standardGeneric("parentage")
              })
 
 #' Setter for LOD cutoff
 #'
-setGeneric("lodcutoff<-", function(object, value) {
+setGeneric("lodcutoff<-", function(x, value) {
            standardGeneric("lodcutoff<-")
              })
 

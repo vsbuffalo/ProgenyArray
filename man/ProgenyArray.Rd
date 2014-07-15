@@ -6,7 +6,7 @@
 \title{ProgenyArray.}
 \usage{
 ProgenyArray(progeny_geno, parents_geno, mothers = integer(),
-  loci = GRanges(), ref = character(), alt = CharacterList())
+  loci = GRanges(), ref = character(), alt = character())
 }
 \arguments{
 \item{progeny_geno}{progeny genotypes matrix (all entries should be 0, 1, 2, or NA)}
@@ -19,7 +19,7 @@ ProgenyArray(progeny_geno, parents_geno, mothers = integer(),
 
 \item{ref}{a character vector of reference loci}
 
-\item{alt}{a \code{CharacterList} of alternate loci}
+\item{alt}{a character vector of alternate loci}
 }
 \description{
 ProgenyArray.

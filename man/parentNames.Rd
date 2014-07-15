@@ -3,7 +3,12 @@
 \alias{parentNames}
 \title{Accessor for parents sample names}
 \usage{
-parentNames(object, value)
+parentNames(x)
+}
+\arguments{
+\item{x}{a ProgenyArray object}
+
+\item{value}{vector of parent names}
 }
 \description{
 Accessor for parents sample names

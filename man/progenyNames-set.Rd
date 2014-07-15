@@ -3,7 +3,7 @@
 \alias{progenyNames<-}
 \title{Setter for progeny sample names}
 \usage{
-progenyNames(object) <- value
+progenyNames(x) <- value
 }
 \description{
 Setter for progeny sample names

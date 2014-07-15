@@ -4,13 +4,10 @@
 \alias{ref,ProgenyArray-method}
 \title{Accessor for reference alleles from a ProgenyArray object}
 \usage{
-\S4method{ref}{ProgenyArray}(x, as_char = TRUE)
+\S4method{ref}{ProgenyArray}(x)
 }
 \arguments{
 \item{x}{a ProgenyArray object}
-
-\item{as_char}{logical indicating whether to return as character
-or as Tassel encodes them, as integer}
 }
 \description{
 Accessor for reference alleles from a ProgenyArray object

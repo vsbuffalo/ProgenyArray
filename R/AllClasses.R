@@ -10,33 +10,35 @@
 #' @slot progeny_geno a matrix of bialleic progeny genotypes
 #' @slot parents_geno a matrix of bialleic parents genotypes
 #' @slot supplied_mothers integer vector indicating the mother of each progeny, supplied by user
-#' @slot mothers integer vector indicating the mother of each progeny
-#' @slot fathers integer vector indicating the father of each progeny
+#' @slot mothers integer vector indicating the inferred mother of each progeny
+#' @slot fathers integer vector indicating the inferred father of each progeny
+#' @slot parents dataframe with inferred parents and model information
 #' @slot complete_loci which loci are complete in the parents
+#' @slot parent_lods matrices from C++ parentage routine (for debugging)
+#' @slot lodcutoff the LOD cutoff used in parentage inference
 #'
 #' @exportClass ProgenyArray
 setClass("ProgenyArray",
          representation=representation(ranges="GRanges",
                                        ref="character",
-                                       alt="CharacterList",
+                                       alt="character",
                                        progeny_geno="matrix",
                                        parents_geno="matrix",
                                        supplied_mothers="integer",
-                                       mothers="integer",
+                                       # TODO we can get rid of this
+                                       mothers="integer", 
                                        fathers="integer",
                                        parents="data.frame",
-                                       fathers_lle="list",
                                        complete_loci="integer",
                                        parent_lods="list",
                                        lodcutoff="numeric"),
          prototype=prototype(ranges=GRanges(),
                              ref=character(),
-                             alt=CharacterList(),
+                             alt=character(),
                              supplied_mothers=integer(),
                              mothers=integer(),
                              fathers=integer(),
                              parents=data.frame(),
-                             fathers_lle=list(),
                              lodcutoff=NA_real_),
          validity=function(object) {
            if (nrow(object@progeny_geno) != nrow(object@parents_geno))
@@ -48,6 +50,7 @@ setClass("ProgenyArray",
 #' @slot nparent parent population size
 #' @slot nprogeny progeny population size
 #' @slot nloci number of loci
+#' @slot selfing selfing rate
 #' @slot prop_parent_missing proportion of genotype data that are missing in parents
 #' @slot prop_progeny_missing proportion of genotype data that are missing in progeny
 #' @slot ehet heterozygous error rate

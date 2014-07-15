@@ -3,7 +3,7 @@
 \alias{alt}
 \title{Accessor for alternate alleles}
 \usage{
-alt(x, as_char = TRUE)
+alt(x)
 }
 \description{
 Accessor for alternate alleles

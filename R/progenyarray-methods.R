@@ -23,10 +23,10 @@ whichLociPolymorphic <- function(x) {
 #' @param mothers user-supplied mothers (e.g. known from collection)
 #' @param loci a \code{GRanges} object of loci
 #' @param ref a character vector of reference loci
-#' @param alt a \code{CharacterList} of alternate loci
+#' @param alt a character vector of alternate loci
 #' @export
 ProgenyArray <- function(progeny_geno, parents_geno, mothers=integer(),
-                         loci=GRanges(), ref=character(), alt=CharacterList()) {
+                         loci=GRanges(), ref=character(), alt=character()) {
   obj <- new("ProgenyArray", progeny_geno=progeny_geno, parents_geno=parents_geno,
              supplied_mothers=mothers, ranges=loci, ref=ref, alt=alt)
 
@@ -169,85 +169,90 @@ setMethod("granges",
 #' Accessor for alterate alleles from a ProgenyArray object
 #'
 #' @param x a ProgenyArray object
-#' @param as_char logical indicating whether to return as \code{CharacterList}
-#' or as Tassel encodes them, as an \code{IntegerList}
 #' @export
 setMethod("alt",
           c(x="ProgenyArray"),
-          function(x, as_char=TRUE) {
-            if (!as_char)
-              return(x@alt)
-            out <- lapply(x@alt, function(x) TASSELL_ALLELES[x])
-            return(as(out, "CharacterList"))
+          function(x) {
+            return(x@alt)
           })
 
 #' Accessor for reference alleles from a ProgenyArray object
 #'
 #' @param x a ProgenyArray object
-#' @param as_char logical indicating whether to return as character
-#' or as Tassel encodes them, as integer
 #' @export
 setMethod("ref",
           c(x="ProgenyArray"),
-          function(x, as_char=TRUE) {
-            if (!as_char)
-              return(x@ref)
-            return(TASSELL_ALLELES[x@ref])
+          function(x) {
+            return(x@ref)
           })
 
 #' Return progeny sample names
 #'
+#' @param x a ProgenyArray object
 #' @export
-setMethod("progenyNames", "ProgenyArray", function(object) {
-  colnames(object@progeny_geno)
+setMethod("progenyNames", "ProgenyArray", function(x) {
+  colnames(x@progeny_geno)
 })
 
 #' Return parent sample names
 #'
+#' @param x a ProgenyArray object
 #' @export
-setMethod("parentNames", "ProgenyArray", function(object) {
-  colnames(object@parents_geno)
+setMethod("parentNames", "ProgenyArray", function(x) {
+  colnames(x@parents_geno)
 })
 
 #' Set method for supplied mothers
 #'
-#' @name suppliedMothers
+#' @param x a ProgenyArray object
+#' @param value vector of mother indices
 #' @export
+#' @name suppliedMothers
 #'
-setReplaceMethod("suppliedMothers", "ProgenyArray", function(object, value) {
-  if (length(value) != ncol(object@progeny_geno))
+setReplaceMethod("suppliedMothers", "ProgenyArray", function(x, value) {
+  if (length(value) != ncol(x@progeny_geno))
     stop("length of value must be same as number of progeny")
-  object@supplied_mothers <- value
-  return(object)
+  x@supplied_mothers <- value
+  return(x)
 })
 
 
 #' Set method for parents sample names
 #'
-#' @name parentNames
+#' @param x a ProgenyArray object
+#' @param value vector of parent names
 #' @export
-setReplaceMethod("parentNames", "ProgenyArray", function(object, value) {
-  if (length(value) != ncol(object@parents_geno))
+#' @name parentNames
+setReplaceMethod("parentNames", "ProgenyArray", function(x, value) {
+  if (length(value) != ncol(x@parents_geno))
     stop("length of value must be same as number of parents")
   if (any(duplicated(value)))
     stop("no duplicated names allowed")
-  colnames(object@parents_geno) <- value
-  return(object)
+  colnames(x@parents_geno) <- value
+  return(x)
 })
 
 
 #' Set method for progeny sample names
 #'
+#' @param x a ProgenyArray object
+#' @param value vector of parent names
 #' @name progenyNames
 #' @export
-setReplaceMethod("progenyNames", "ProgenyArray", function(object, value) {
-  if (length(value) != ncol(object@progeny_geno))
+setReplaceMethod("progenyNames", "ProgenyArray", function(x, value) {
+  if (length(value) != ncol(x@progeny_geno))
     stop("length of value must be same as number of progeny")
   if (any(duplicated(value)))
     stop("no duplicated names allowed")
-  colnames(object@progeny_geno) <- value
-  return(object)
+  colnames(x@progeny_geno) <- value
+  return(x)
 })
+
+#' Get inferred parents as a dataframe
+#'
+#' @param x a ProgenyArray object
+#' @name progenyNames
+#' @export
 
 setMethod("parentage", "ProgenyArray", function(x) {
   if (!length(x@supplied_mothers)) stop("if user-supplied mothers are set, use parents() method")

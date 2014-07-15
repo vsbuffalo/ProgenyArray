@@ -4,13 +4,10 @@
 \alias{alt,ProgenyArray-method}
 \title{Accessor for alterate alleles from a ProgenyArray object}
 \usage{
-\S4method{alt}{ProgenyArray}(x, as_char = TRUE)
+\S4method{alt}{ProgenyArray}(x)
 }
 \arguments{
 \item{x}{a ProgenyArray object}
-
-\item{as_char}{logical indicating whether to return as \code{CharacterList}
-or as Tassel encodes them, as an \code{IntegerList}}
 }
 \description{
 Accessor for alterate alleles from a ProgenyArray object

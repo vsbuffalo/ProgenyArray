@@ -3,7 +3,7 @@
 \alias{ref}
 \title{Accessor for reference alleles}
 \usage{
-ref(x, as_char = TRUE)
+ref(x)
 }
 \description{
 Accessor for reference alleles

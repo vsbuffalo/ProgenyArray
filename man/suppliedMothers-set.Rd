@@ -3,7 +3,7 @@
 \alias{suppliedMothers<-}
 \title{Accessor for user-supplied mothers}
 \usage{
-suppliedMothers(object) <- value
+suppliedMothers(x) <- value
 }
 \description{
 Accessor for user-supplied mothers

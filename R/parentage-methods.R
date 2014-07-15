@@ -27,6 +27,10 @@ caclulateLODs <- function(x) {
 #' inferParents() infers the parents of all ProgenyArray by calculating the
 #' likelihood of all possible parents. If there are P parents, this involves
 #' calculating P(P - 1)/2 likelihoods.
+#' @param x a ProgenyArray object
+#' @param ehet heterozygous error rate
+#' @param ehom homozygous error rate
+#' @param verbose logical indicating whether to use verbose output
 #' @export
 setMethod("inferParents", c(x="ProgenyArray"),
 function(x, ehet, ehom, verbose=TRUE) {

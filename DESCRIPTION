@@ -7,14 +7,14 @@ Description: This package contains classes for storing progeny array genotyping
 Depends:
     R (>= 3.1.0),
     GenomicRanges,
-    Rcpp,
-    RcppEigen
 Imports:
-    IRanges,
-    tasselr,
     methods,
     Biobase,
+    Rcpp,
+    RcppEigen,
     reshape2,
+    ggplot2
+Suggests:
     testthat
 LinkingTo: Rcpp, RcppEigen
 License: BSD

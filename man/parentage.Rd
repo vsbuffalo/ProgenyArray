@@ -3,7 +3,7 @@
 \alias{parentage}
 \title{Create parentage dataframe}
 \usage{
-parentage(x, names = TRUE)
+parentage(x)
 }
 \description{
 Create parentage dataframe

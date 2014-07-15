@@ -21,10 +21,16 @@ An S4 class that stores genotyping data from a progeny array design.
 
 \item{\code{supplied_mothers}}{integer vector indicating the mother of each progeny, supplied by user}
 
-\item{\code{mothers}}{integer vector indicating the mother of each progeny}
+\item{\code{mothers}}{integer vector indicating the inferred mother of each progeny}
 
-\item{\code{fathers}}{integer vector indicating the father of each progeny}
+\item{\code{fathers}}{integer vector indicating the inferred father of each progeny}
+
+\item{\code{parents}}{dataframe with inferred parents and model information}
 
 \item{\code{complete_loci}}{which loci are complete in the parents}
+
+\item{\code{parent_lods}}{matrices from C++ parentage routine (for debugging)}
+
+\item{\code{lodcutoff}}{the LOD cutoff used in parentage inference}
 }}
 

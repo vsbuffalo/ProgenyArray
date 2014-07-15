@@ -3,7 +3,7 @@
 \alias{parentNames<-}
 \title{Setter for parents sample names}
 \usage{
-parentNames(object) <- value
+parentNames(x) <- value
 }
 \description{
 Setter for parents sample names

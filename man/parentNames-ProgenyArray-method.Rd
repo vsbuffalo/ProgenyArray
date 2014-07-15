@@ -4,7 +4,10 @@
 \alias{parentNames,ProgenyArray-method}
 \title{Return parent sample names}
 \usage{
-\S4method{parentNames}{ProgenyArray}(object)
+\S4method{parentNames}{ProgenyArray}(x)
+}
+\arguments{
+\item{x}{a ProgenyArray object}
 }
 \description{
 Return parent sample names

@@ -5,6 +5,11 @@
 \usage{
 suppliedMothers(x)
 }
+\arguments{
+\item{x}{a ProgenyArray object}
+
+\item{value}{vector of mother indices}
+}
 \description{
 Accessor for user-supplied mothers (returning indices or names)
 

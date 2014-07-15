@@ -6,6 +6,15 @@
 \usage{
 \S4method{inferParents}{ProgenyArray}(x, ehet, ehom, verbose = TRUE)
 }
+\arguments{
+\item{x}{a ProgenyArray object}
+
+\item{ehet}{heterozygous error rate}
+
+\item{ehom}{homozygous error rate}
+
+\item{verbose}{logical indicating whether to use verbose output}
+}
 \description{
 inferParents() infers the parents of all ProgenyArray by calculating the
 likelihood of all possible parents. If there are P parents, this involves
