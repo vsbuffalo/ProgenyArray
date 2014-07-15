@@ -201,8 +201,33 @@ offspring genotypes to observed offspring genotypes.
 \subsection{Parental Haplotype Inference}
 
 Adopting the design of \citep{browning2009unified}, we build a duo leveled HMM
-($H^2$) for GBS data with high error rate. Our hidden states are the alleles on
-three haplotypes: 
+($H^2$) for GBS data with high error rate. Our hidden states are the space of a
+3-tuple of alleles: genotyped parents transmitted allele, genotyped parents
+untransmitted allele, and the offspring's allele from the non-genotyped parent.
+Observed values are the emitted genotypes from these states. There are $2^3$
+possible k-tuples for the duo HMM.
+
+$$
+0 1 0 1 1 0 1 0 M1
+         \
+1 0 0 1 0 1 1 0 M2
+
+phase is first el
+           p  k  m
+(0, 1, 0)  01 00 0x
+(1, 0, 0)  11 00 0x
+(0, 0, x)  
+(1, 1, x)
+(1, 0, x)
+-
+(1, 0, x)
+(1, 1, x)
+(0, 0, x)
+$$
+
+Switches between internal state don't matter?
+
+Transitions of haplotype k-tuples.
 
 
 
