@@ -137,3 +137,7 @@ setGeneric("progenyArray", function(x) {
            standardGeneric("progenyArray")
           })
 
+#' Get half sib family given a mother
+setGeneric("getHalfsibFamilyGeno", function(x, mother) {
+           standardGeneric("getHalfsibFamilyGeno")
+          })

@@ -116,34 +116,6 @@ propCorrectParents <- function(x) {
   unname(tbl[3])
 }
 
-setMethod("show", "SimulatedProgenyArray", function(object) {
-  o <- object
-  cat(sprintf("SimulatedProgenyArray object: %d loci, %d parents, %d progeny\n",
-              o@nloci, o@nparent, o@nprogeny))
-  cat("Targetted rates:\n")
-  cat(sprintf("  selfing: %0.3f\n", o@selfing))
-  cat(sprintf("  parent missing: %0.3f\n", o@prop_parent_missing))
-  cat(sprintf("  progeny missing: %0.3f\n", o@prop_progeny_missing))
-  cat(sprintf("  heterozygous error: %0.3f\n", o@ehet))
-  cat(sprintf("  homozygous error: %0.3f\n", o@ehom))
-  cat("*** Internal ProgenyArray Object ***\n")
-  show(o@progeny_array)
-  cat("*** Parentage Accuracy ***\n")
-  if (nrow(progenyArray(o)@parents) > 0) {
-    #mc <- sum(o@mothers == mothers(progenyArray(o)))
-    #fc <- sum(o@fathers == fathers(progenyArray(o)))
-    n <- ncol(o@progeny_geno)
-    #cat(sprintf("%d/%d (%0.0f%%) mothers correct\n", mc, n, 100*mc/n))
-    #cat(sprintf("%d/%d (%0.0f%%) fathers correct\n", fc, n, 100*fc/n))
-    real <- split(cbind(o@mothers, o@fathers), seq_len(n))
-    inferred <- split(o@progeny_array@parents[, 2:3], seq_len(n))
-    tbl <- prop.table(correctParentCounts(real, inferred))
-    cat(sprintf("prop parents correct:\n"))
-    cat(sprintf("  0    1    2\n"))
-    cat(sprintf("%0.2f %0.2f %0.02f\n", tbl[1], tbl[2], tbl[3]))
-  }
-})
-
 
 #' Accessor for parent genotypes
 #'
@@ -174,4 +146,33 @@ setMethod("progenyArray",
           function(x) {
             return(x@progeny_array)
           })
+
+setMethod("show", "SimulatedProgenyArray", function(object) {
+  o <- object
+  cat(sprintf("SimulatedProgenyArray object: %d loci, %d parents, %d progeny\n",
+              o@nloci, o@nparent, o@nprogeny))
+  cat("Targetted rates:\n")
+  cat(sprintf("  selfing: %0.3f\n", o@selfing))
+  cat(sprintf("  parent missing: %0.3f\n", o@prop_parent_missing))
+  cat(sprintf("  progeny missing: %0.3f\n", o@prop_progeny_missing))
+  cat(sprintf("  heterozygous error: %0.3f\n", o@ehet))
+  cat(sprintf("  homozygous error: %0.3f\n", o@ehom))
+  cat("*** Internal ProgenyArray Object ***\n")
+  show(o@progeny_array)
+  cat("*** Parentage Accuracy ***\n")
+  if (nrow(progenyArray(o)@parents) > 0) {
+    #mc <- sum(o@mothers == mothers(progenyArray(o)))
+    #fc <- sum(o@fathers == fathers(progenyArray(o)))
+    n <- ncol(o@progeny_geno)
+    #cat(sprintf("%d/%d (%0.0f%%) mothers correct\n", mc, n, 100*mc/n))
+    #cat(sprintf("%d/%d (%0.0f%%) fathers correct\n", fc, n, 100*fc/n))
+    real <- split(cbind(o@mothers, o@fathers), seq_len(n))
+    inferred <- split(o@progeny_array@parents[, 2:3], seq_len(n))
+    tbl <- prop.table(correctParentCounts(real, inferred))
+    cat(sprintf("prop parents correct:\n"))
+    cat(sprintf("  0    1    2\n"))
+    cat(sprintf("%0.2f %0.2f %0.02f\n", tbl[1], tbl[2], tbl[3]))
+  }
+})
+
 

@@ -2,6 +2,13 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
+validGenotypes <- function(x, allowNA=TRUE) {
+  genos <- seq(0, 2)
+  if (allowNA)
+    genos <- c(NA, genos)
+  all(x %in% genos)
+}
+
 
 #' Create a genotyping error matrix.
 #'
@@ -73,11 +80,6 @@ HWPlot <- function(x) {
 }
 
 
-#### BEGIN DEPRECATED ####
-# These functions were used to generate Mendelian transmission probabilties
-# when parentage was inferred in R. Now this is done in C++; these are just
-# here for debugging/testing
-
 MendelianTransmissionList <- function(x) {
     # Mendelian transition matrix, in list notation for readability
     # TODO: we can build this up programmatically using Kronecker products.
@@ -139,4 +141,15 @@ probOffspringGivenParent <- function(offspring, parent, freqs, ehet, ehom) {
 }
 
 
-#### END DEPRECATED ####
+MendelianInconsistencies <- function(parent1, child, parent2=NULL) {
+  m <- MendelianTransmissionMatrix() > 0
+  stopifnot(validGenotypes(c(parent1, child)))
+  parent1 <- parent1+1L
+  child <- child+1L
+  if (is.null(parent2)) {
+    validGenotypes(parent2)
+    return(mapply(function(p1, c) all(!m[, c, p1]), parent1, child))
+  }
+  parent2 <- parent2+1L
+  return(mapply(function(p1, p2, c) !m[p2, c, p1], parent1, parent2, child))
+}

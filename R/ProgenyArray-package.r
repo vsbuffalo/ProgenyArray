@@ -7,6 +7,7 @@
 #' @import ggplot2
 #' @import GenomicRanges
 #' @importFrom reshape2 melt
+#' @importFrom caret confusionMatrix
 #' @importMethodsFrom Biobase samples
 #' @useDynLib ProgenyArray
 #' @importFrom Rcpp sourceCpp
