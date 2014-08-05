@@ -1,0 +1,178 @@
+---
+title: "Shared Haplotype Classification by IBS"
+output:
+pdf_document:
+  toc: false
+  highlight: zenburn
+---
+
+```{r}
+load_all("~/Projects/ProgenyArray")
+library(rmarkdown)
+library(Rcpp)
+library(parallel)
+library(caret)
+options(mc.cores=4)
+```
+
+## Identity by State with Error
+
+```{r}
+
+sampleAllele <- function(x) {
+  sapply(x, function(g) {
+         # TODO could be simpler bernoulli
+         p <- matrix(c(1, 0.5, 0, 0, 0.5, 1), nrow=3)[g+1L, ]
+         sample(c(0L, 1L), prob=p, 1)
+  })
+}
+
+halfsibFamily <- function(n, nsites, popsize=1000, ehet=0.8, ehom=0.1) {
+  # for sim, we need mom's gametes so normal diploid sample routine won't work
+  # instead, we make her grandparent pop, and draw mom and fathers from that
+  grandpop <- createDiploidSample(popsize, nsites)
+
+  # grab mom and dad's parents
+  grandpars <- sample(1:ncol(grandpop), 2)
+  momhaps <- mate(grandpop[, grandpars[1]], grandpop[, grandpars[2]], dont_combine=TRUE)
+  randmate <- function(i) {
+    mate(grandpop[, sample(1:popsize, 1)], grandpop[, sample(1:popsize, 1)])
+  }
+  mom_geno <- rowSums(momhaps)
+
+  # create pop for other parents, excluding 1 for mom since we generated her
+  pop <- do.call(cbind, lapply(1:(popsize-1), randmate))
+  fathers <- sample(1:ncol(pop), n) # no replacement, no selfs
+  whichmomhap <- sample(1:2, n, replace=TRUE)
+  gametes <- mapply(function(f, h) cbind(sampleAllele(pop[, f]), momhaps[, h]),
+                    fathers, whichmomhap, SIMPLIFY=FALSE)
+  genos <- lapply(gametes, rowSums)
+  genos_error <- lapply(genos, function(g) addGenotypeError(g, ehet=ehet, ehom=ehom))
+
+  # allele freqs in prev generation
+  freqs  <- alleleFreqs(grandpop)
+  list(genos=genos, genos_error=genos_error, gametes=momhaps, freqs=freqs, whichmomhap=whichmomhap)
+}
+
+
+hs <- halfsibFamily(30, 500)
+g <- do.call(cbind, hs$genos_error)
+
+
+#
+#cppFunction("double tot_ibs(int p1, int p2, IntegerMatrix g, IntegerMatrix ibs) {
+#  double x = 0;
+#  for (int i = 0; i < g.nrow(); i++)
+#    x += ibs(g(i, p1), g(i, p2));
+#  return x;
+#};")
+#
+#ibsDist <- function(x) {
+#  stopifnot(typeof(x) == "integer")
+#  outer(1:ncol(x), 1:ncol(x), Vectorize(tot_ibs, vectorize.args=c('p1', 'p2')),
+#        g=x, ibs=IBS)
+#}
+#
+
+IBS <- matrix(as.integer(c(2, 1, 0, 1, 2, 1, 0, 1, 2)), nrow=3)
+
+ibs <- function(i, j, g) {
+  gi <- g[, i]
+  gj <- g[, j]
+  mean(IBS[cbind(gi+1L, gj+1L)])
+}
+
+ibsSim <- function(x) {
+  stopifnot(typeof(x) == "integer")
+  outer(1:ncol(x), 1:ncol(x), Vectorize(ibs, vectorize.args=c('i', 'j')),
+        g=x)
+}
+
+plot(hclust(as.dist(2-ibsSim(g))), labels=hs$whichmomhap)
+
+```
+
+## MLE Haplotype Imputation
+
+Our next task is to impute the unseen haplotype states, given our clustering.
+Here is some prototype code with some benchmarks.
+
+```{r}
+
+pgh <- function(p) matrix(c(1-p, 0, p, 1-p, 0, p), nrow=2)
+
+
+mleHapAlleleAlt <- function(x, freqs, ehet=0.8, ehom=0.1) {
+  # uses multinomial
+  E <- genotypingErrorMatrix(ehet, ehom)
+  cnts <- t(apply(x, 1, countGenotypes))[, -4]
+  ll <- sapply(1:nrow(x), function(i) {
+    gm <- pgh(freqs[i]) %*% E
+    c(dmultinom(cnts[i, ], prob=gm[1,]), dmultinom(cnts[i, ], prob=gm[2,]))
+  })
+  ll <- t(ll)
+  list(mle=apply(ll, 1, which.max)-1L, ll=ll)
+}
+
+mleHapAllele <- function(x, freqs, ehet=0.8, ehom=0.1) {
+  # probability of exact sequence
+  E <- genotypingErrorMatrix(ehet, ehom)
+  cnts <- t(apply(x, 1, countGenotypes))[, -4]
+  ll <- sapply(1:nrow(x), function(i) {
+    gm <- pgh(freqs[i]) %*% E
+    colSums(log(t(sapply(x[i, ], function(j) gm[, j+1L]))))
+  })
+  ll <- t(ll)
+  list(mle=apply(ll, 1, which.max)-1L, ll=ll)
+}
+
+haploImpute <- function(genos, freqs, ehet=0.8, ehom=0.1) {
+  hc <- hclust(as.dist(2-ibsSim(genos)))
+  hgrps <- cutree(hc, 2)
+  h1 <- mleHapAlleleAlt(genos[, hgrps == 1], freqs, ehet, ehom)
+  h2 <- mleHapAlleleAlt(genos[, hgrps == 2], freqs, ehet, ehom)
+  haps <- cbind(h1[[1]], h2[[1]])
+  ll <- list(h1[[2]], h2[[2]])
+  list(haplotypes=haps, ll=ll, group=hgrps, clust=hc)
+}
+
+```
+
+Let's try this over a set of parameters to assess accuracy. Note that we do not
+know which inferred haplotype is which true one, which causes problems in
+assessing accuracy.
+
+```{r}
+
+famsize <- seq(5, 50, 5)
+ehet <- c(seq(0, 0.8, 0.2), 0.9)
+ehom <- c(seq(0, 0.8, 0.2), 0.9)
+NLOCI <- 1000
+
+params <- expand.grid(famsize=famsize, ehet=ehet, ehom=ehom)
+
+hamming <- function(x, y) sum(x != y)
+
+out <- with(params, mcmapply(function(fs, ehet, ehom) {
+       cbn <- expand.grid(1:2, 1:2)
+       h <- halfsibFamily(fs, NLOCI, ehet=ehet, ehom=ehom)
+       g <- do.call(cbind, h$genos_error)
+       ihaps <- haploImpute(g, h$freqs, ehet, ehom)$haplotypes
+       cbn$ham <- apply(cbn, 1, function(x) hamming(ihaps[, x[1]], h$gametes[, x[2]]))
+       # for each of the true haplotypes, match with closest imputed haplotype
+       # since that's all we can do.
+       best1 <- cbn$Var1[which.min(cbn$ham[cbn$Var2 == 1])]
+       best2 <- cbn$Var1[which.min(cbn$ham[cbn$Var2 == 2])]
+       cm <- list(confusionMatrix(ihaps[, best1], h$gametes[, 1]), confusionMatrix(ihaps[, best2], h$gametes[, 2]))
+       if (best1 == best2) warning("best haplotype is same")
+       message(sprintf("complete sim: famsize=%d, ehet=%0.3f, ehom=%0.3f", fs, ehet, ehom))
+       ac <- sapply(cm, function(y) y$overall['Accuracy'])
+       ac
+}, famsize, ehet, ehom, SIMPLIFY=FALSE))
+
+
+
+```
+
+
+

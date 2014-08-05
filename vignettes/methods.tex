@@ -2,6 +2,8 @@
 \usepackage{fullpage}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{graphicx}
+\usepackage{bm}
+\usepackage{bbm}
 \usepackage[authoryear,round,longnamesfirst]{natbib}
 \usepackage[x11names, rgb]{xcolor}
 \usepackage[utf8]{inputenc}
@@ -59,10 +61,10 @@ Mendelian transmission matrix --- essentially a conditional probability matrix.
 $P(g_m)$ and $P(g_f)$ are the probability of the observed genotypes for mother
 and father. Assuming random mating, these are just the Hardy-Weinberg genotype
 probabilities. For any genotype with alternate allele frequency $p$, the vector
-$\mathbf{h}$ encodes the genotype probabilities under Hardy-Weinberg:
+$\bm{h}$ encodes the genotype probabilities under Hardy-Weinberg:
 
 $$
-\mathbf{h} = \left[ \begin{array}{c}
+\bm{h} = \left[ \begin{array}{c}
 (1 - p)^2 \\
 2p(1-p) \\
 p^2 \\
@@ -125,11 +127,11 @@ $$
 %$$
 %
 Every component of this model is now tractable. Our error model enters through
-the stochastic transition matrix $\mathbf{E}$ for any true, latent genotype $g$
+the stochastic transition matrix $\bm{E}$ for any true, latent genotype $g$
 to an observed genotype $g'$:
 
 $$
-\mathbf{E} = P(g'|g) = \left[ \begin{array}{ccc}
+\bm{E} = P(g'|g) = \left[ \begin{array}{ccc}
 1 - e & e/2 & e/2 \\
 \epsilon/2 & 1 - \epsilon & \epsilon/2 \\
 e/2 & e/2 & 1 - e \\
@@ -198,12 +200,155 @@ offspring genotypes to observed offspring genotypes.
 %\end{equation*}
 %
 
-\subsection{Parental Haplotype Inference}
+\subsection{Parental Haplotype Inference and Imputation}
 
-Adopting the design of \citep{browning2009unified}, we build a duo leveled HMM
-($H^2$) for GBS data with high error rate. Our hidden states are the alleles on
-three haplotypes: 
+Each half-sibling $i$ inherits one haplotype from the shared parent's two
+haplotypes per window; let $z_i \in \{1, 2\}$ indicate which haplotype
+half-sibling $i$ inherited. Both haplotypes are composed of unseen allele
+states at $L$ markers, haplotype $k \in \{1, 2\}$ has allelic states
+$\bm{\theta}_k$. For each half-sibling $i$, we only observe $\bm{g}_i'$, the
+genotype data at $L$ markers that undergoes the same error process described
+above. Our goal is to find MLEs for $\bm{\theta} = \{\bm{\theta}_1,
+\bm{\theta}_2\}$. Thus, this is a mixture model, where the complete data log
+likelihood is:
 
+$$
+l(\bm{\theta}) =  \sum_{i=1}^n \log \frac{1}{2} p(\bm{g}'_i, z_i | \bm{\theta}) = \sum_{i=1}^n \log \left[ \frac{1}{2}\mathbbm{I}(z_i = 1) p(\bm{g}'_i | \bm{\theta}_1) + \frac{1}{2}\mathbbm{I}_2(z_i = 2) p(\bm{g}'_i | \bm{\theta}_2) \right]
+$$
+
+Where the $\frac{1}{2}$ is the probability of an individual receiving a
+haplotype. However, optimizing this is very difficult because (1) we'd have to
+marginalize over $z$, which would require $2^n$ operations and (2) each element
+of $\bm{\theta}$ are binary parameters and difficult to optimize. However, this
+is tractable with the EM algorithm and a good prior guess of $\bm{\theta}_1$
+and $\bm{\theta}_2$. First, we will show a method to initialize $\bm{z}$ (the
+vector of $z$ for each half-sibling), $\bm{\theta}_1$, and $\bm{\theta}_1$.
+This uses a probabilistic clustering approach to create $\bm{z}$, and then
+maximizes $\bm{\theta}_1$ and $\bm{\theta}_2$ for each haplotype cluster. This
+is essentially one round of hard-assignment EM.
+
+\subsection{Initial assignment of half-siblings to haplotype groups}
+
+To initialize $\bm{\theta}$ and $\bm{z}$, we first use a probabilistic
+clustering approach to estimate $\bm{z}$ for a window for all progeny. For two
+progeny $i$ and $j$, our goal is to estimate the probability that these
+half-siblings share an IBD haplotype from the shared parent. 
+
+%%% OLD
+
+%
+%The assumption of no recombination in this window allows us to say that
+%each a half-sibling's genotypes are sampled from the class conditional
+%distribution $P(\bm{g} | \bm{h})$ where $\bm{h}$ is the unseen
+%
+%
+%haplotype. We observe noisy genotypes $\bm{g}'$, where $\bm{g}'
+%\perp\!\!\!\perp \bm{h} \; | \; \bm{g}$, so with error this is:
+%
+%$$
+%P(\bm{g}', \bm{g} | \bm{h}) = P(\bm{g}' | \bm{g}) P(\bm{g} | \bm{h})
+%$$
+%
+%$$
+%P(\bm{g}' | \bm{h}) = \sum_{g \in \{0, 1, 2\}} P(\bm{g}' | \bm{g}) P(\bm{g} | \bm{h})
+%$$
+%
+%Our parameters are $\bm{h}$ --- these are $\{0, 1\}$ for each locus that
+%indicates the allele state in the shared parent's haplotype. Additionally, we
+%do not know which of the shared parent's two haplotypes each half-sibling's
+%genotypes were sampled from. 
+%
+%
+%
+%In this window, each half-sibling receives one of two haplotypes from
+%the shared parent (with uniform probability). We don't observed which haplotype
+%was received ($h \in \{1, 2\}$), nor the allele states of these haplotypes
+%($\bm{\theta}$), but need to infer $\bm{\theta}$. If we had full
+%information about $h$ and $\bm{\theta}$, our complete data likelihood would
+%be:
+%
+%$$
+%
+%P(\bm{g}', h, \bm{\theta}) = P(h) P(\bm{\theta}|h) \sum_g P(\bm{g}' | \bm{g})
+%
+%$$
+%
+%
+%
+%
+%This setup is identical to Bayesian clustering, where the
+%class-conditional distribution is $P(\bm{g'} | h, \bm{\theta})$, where
+%$\bm{g'}$ are the observed genotypes. With half-sib families,
+%$P(\bm{g'} | h, \bm{\theta})$ is:
+%
+%$$
+%P(\bm{g'} | h, \mathbd{\theta}) = P(g' | g) P(h)
+%
+%\prod_{i = 1}^L 
+%$$
+%
+%But extending this to cases where an individual is selfed is trivial.
+%
+%Inferring the shared parent's haplotype for this window is 
+%
+%We then partition all half-siblings into two groups, according to which
+%haplotype from the shared parent they received. Since the identity of this
+%haplotype is unknown and only observed through a set of noisy genotypes, we
+%cannot use 
+%
+%
+%Then, each half-sibling's window can be classified into one of two
+%mutually exclusive groups, according to which haplotype they inherited from
+%their shared parent.
+%
+%the relatedness between all progeny in the half-sib family will
+%form two clusters, according to which of the two haplotypes from the shared
+%parent each child received. 
+%
+
+\subsection{Window Size}
+
+Each gamete contributed to each progeny from the shared parent is the
+result of an independent meiosis. Consequently, for a window size with genetic
+distance $m$ (between the first and last markers), the probability of zero
+crossovers is between two loci $m$ centiMorgans apart across all $n$ progeny
+is:
+
+$$
+P(c = 0 | m, n) = \prod_{i=1}^n P(c = 0 | m)
+$$
+
+For a single individual, the probability of $c$ number of crossovers between
+two loci $m$ genetic distance apart is:
+
+$$
+p(m, c) = \frac{e^{-m}m^c}{c!}
+$$
+
+(Haldane). Thus the probability of zero crossovers in a window of length $m$ in
+any of $n$ progeny is:
+
+$$
+P(c = 0 | m, n) = e^{-nm}
+$$
+
+Rather than develop a threshold based around the probability that there are
+zero recombination events in a $n$ windows $m$ distance wide, we could base our
+threshold on the expected total number of recombinations. Since the number of
+crossovers is Poisson with mean $m$, the sum of $n$ iid Poisson distributions
+is Poisson $mn$. Thus, for $E[X] < 0$ implies $mn < 0$
+
+E[c] < 0
+
+
+recombination events
+between homologous 
+
+
+
+Parental haplotypes are inferred using windowed-approach: since half-sibs are
+separated by only two meioses, we assume that there are no recombinations
+within a window. 
 
 
 \bibliographystyle{plainnat}
