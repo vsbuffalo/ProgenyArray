@@ -17,12 +17,14 @@ createDiploidSample  <- function(n, nsites) {
   do.call(cbind, out)
 }
 
-mate <- function(x, y) {
+mate <- function(x, y, dont_combine=FALSE) {
   # mate two genotype vectors, each genotype is independently inherited
   transmit <- list(c(0), c(0, 1), c(1, 1))
   x_gametes <- sapply(transmit[x+1L], sample, size=1)
   y_gametes <- sapply(transmit[y+1L], sample, size=1)
-  return(x_gametes + y_gametes)
+  if (!dont_combine)
+    return(x_gametes + y_gametes)
+  cbind(x_gametes, y_gametes)
 }
 
 addGenotypeError <- function (x, ehet=0, ehom=0) {
