@@ -101,7 +101,6 @@ Here is some prototype code with some benchmarks.
 
 pgh <- function(p) matrix(c(1-p, 0, p, 1-p, 0, p), nrow=2)
 
-
 mleHapAlleleAlt <- function(x, freqs, ehet=0.8, ehom=0.1) {
   # uses multinomial
   E <- genotypingErrorMatrix(ehet, ehom)
@@ -127,8 +126,10 @@ mleHapAllele <- function(x, freqs, ehet=0.8, ehom=0.1) {
 }
 
 haploImpute <- function(genos, freqs, ehet=0.8, ehom=0.1) {
-  hc <- hclust(as.dist(2-ibsSim(genos)))
-  hgrps <- cutree(hc, 2)
+  #hc <- hclust(as.dist(2-ibsSim(genos)))
+  #hgrps <- cutree(hc, 2)
+  hc <- keamn(t(genos), 2)
+  hgrps <- hc$cluster
   h1 <- mleHapAlleleAlt(genos[, hgrps == 1], freqs, ehet, ehom)
   h2 <- mleHapAlleleAlt(genos[, hgrps == 2], freqs, ehet, ehom)
   haps <- cbind(h1[[1]], h2[[1]])
@@ -170,9 +171,16 @@ out <- with(params, mcmapply(function(fs, ehet, ehom) {
        ac
 }, famsize, ehet, ehom, SIMPLIFY=FALSE))
 
+load('results.Rdata')
 
 
 ```
 
+## Partition-Ligation
 
+We extend the haplotype imputation above to include partition-ligation.
+
+```{r}
+
+```
 
