@@ -5,16 +5,19 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
-createDiploidSample  <- function(n, nsites) {
-	# this is a bit of an approximation: create SFS, and then generate site
-	# frequencies from that.
-
+sampleSiteFreqs <- function(n, nsites) {
 	sf <- 1/seq_len(n) # sfs for sample of n
 	site_probs <- sf/sum(sf) # probability of getting a certain number of sites
 	site_freqs <- seq_len(n)/n
+	sample(site_freqs, nsites, replace=TRUE, prob=site_probs)
+}
 
-	sample_sf <- sample(site_freqs, nsites, replace=TRUE, prob=site_probs)
-	#samples <- t(replicate(2*n, { Vectorize(function(prob) rbinom(1, 1, prob), "prob")(sample_sf) } ))
+createDiploidSample  <- function(n, nsites) {
+	# this is a bit of an approximation: create SFS, and then generate site
+	# frequencies from that.
+  sample_sf <- sampleSiteFreqs(n, nsites)
+
+  #samples <- t(replicate(2*n, { Vectorize(function(prob) rbinom(1, 1, prob), "prob")(sample_sf) } ))
 	#split(split(samples, row(samples)), rep(seq_len(n), each=2))
   out <- lapply(seq_len(n), function(x) rbinom(nsites, 1, sample_sf)+rbinom(nsites, 1, sample_sf))
   do.call(cbind, out)

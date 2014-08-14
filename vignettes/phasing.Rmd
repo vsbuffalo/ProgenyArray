@@ -1,0 +1,88 @@
+---
+title: "Phasing"
+output:
+pdf_document:
+  toc: false
+  highlight: zenburn
+---
+
+```{r}
+load_all("~/Projects/ProgenyArray")
+library(rmarkdown)
+library(Rcpp)
+library(parallel)
+library(caret)
+options(mc.cores=4)
+```
+
+## Simulate Sibling Family with Selfs
+
+```{r}
+sf <- sibFamily(70, 1000)
+```
+
+How do these separate in principal component space?
+
+```{r}
+p <- prcomp(t(sf$progeny))
+d <- data.frame(x=p$x[,1], y=p$x[,2], mom=as.factor(sf$metadata$mgamete),
+                type=sf$metadata$type)
+ggplot(d) + geom_point(aes(x=x, y=y, color=mom, shape=type)) + xlab("PC 1") + ylab("PC 2")
+
+```
+
+## K-means
+
+Let's use k-means to look at accuracy. K-means is non-deterministic (random
+initial positions), so we will run 1000 replicates. Cluster labels are
+arbitrary, so we swap them when the alternate label is closer.
+
+```{r}
+
+switchLabels <- function(inferred, real) {
+  switch <- which.max(table(inferred, real)[1, ]) != 1
+  if (switch)
+    return(ifelse(inferred == 1, 2, 1))
+  inferred
+}
+
+kmeansAccuracy <- function(geno, real) {
+  cm <- confusionMatrix(switchLabels(kmeans(geno, 2)$cluster, real), real)
+  cm$overall['Accuracy']
+}
+
+famsize <- rep(5:70, each=3)
+acc <- sapply(famsize, function(n) {
+                 sf <- sibFamily(n, 1000)
+                 kmeansAccuracy(t(sf$progeny), sf$metadata$mgamete)
+})
+
+qplot(x=famsize, y=acc) + ylab("accuracy") + xlab("family size") + geom_smooth(se=FALSE)
+
+```
+
+What is being misclassified? These are all heterozygous selfed progeny, where
+the true cluster is either.
+
+```{r}
+incor <- sapply(famsize, function(n) {
+                sf <- sibFamily(n, 1000)
+                l <- switchLabels(kmeans(t(sf$progeny), 2)$cluster,
+                                  sf$metadata$mgamete)
+                nwrong <- sum(l != sf$metadata$mgamete)
+                # how many cases are wrong, but heterzygous selfs
+                x <- with(sf$metadata, l != mgamete & type == "selfed"
+                          & mother != father)
+                sum(x)/nwrong
+})
+
+```
+
+## Imputation
+
+```{r}
+haploImpute <- function(geno, parent, ehet, ehom) {
+
+}
+```
+
