@@ -13,6 +13,7 @@ library(Rcpp)
 library(parallel)
 library(caret)
 options(mc.cores=4)
+
 ```
 
 ## Simulate Sibling Family with Selfs
@@ -81,8 +82,34 @@ incor <- sapply(famsize, function(n) {
 ## Imputation
 
 ```{r}
-haploImpute <- function(geno, parent, ehet, ehom) {
 
+probAllele <- function(gp, freq, ehet, ehom) {
+  error <- genotypingErrorMatrix(ehet, ehom)
+  hw <- c((1-freq)^2, 2*freq*(1-freq), (1-freq)^2)
+  ag = matrix(c(1, 1/2, 0, 0, 1/2, 1), ncol=2)
+  pagp(gp, freq, error, hw, ag)
 }
+
+haploImpute <- function(geno, parent_geno, fathers, freqs, ehet=0.8, ehom=0.1) {
+  km <- kmeans(t(geno), 2)
+  hap_geno <- list(geno[, km$cluster == 1], geno[, km$cluster == 2])
+  out <- lapply(1:2, function(which_hap) {
+                hap_geno <- geno[, km$cluster == which_hap]
+                hap_fathers <- fathers[km$cluster == which_hap]
+                ll <- lapply(1:nrow(hap_geno), function(i) {
+                             allele_ll(hap_geno[i, ], ehet, ehom, freqs[i],
+                                       parent_geno[cbind(i, hap_fathers)])
+               })
+               do.call(rbind, ll)
+  })
+}
+
+ll <- haploImpute(sf$progeny, sf$geno, sf$metadata$father, sf$freqs)
+
+
+h1 <- apply(ll[[1]], 1, which.max) - 1L
+h2 <- apply(ll[[2]], 1, which.max) - 1L
+
+
 ```
 

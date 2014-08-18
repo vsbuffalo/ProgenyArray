@@ -9,3 +9,7 @@ countGenotypes <- function(x) {
     .Call('ProgenyArray_countGenotypes', PACKAGE = 'ProgenyArray', x)
 }
 
+allele_ll <- function(progeny_genos, ehet, ehom, freq, father_genos) {
+    .Call('ProgenyArray_allele_ll', PACKAGE = 'ProgenyArray', progeny_genos, ehet, ehom, freq, father_genos)
+}
+

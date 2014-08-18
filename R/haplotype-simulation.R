@@ -12,7 +12,7 @@ randomGametes <- function(freqs, F=0) {
 }
 
 createIndividuals <- function(n, freqs, F=0) {
-  replicate(n, randomGametes(freqs, father_F),
+  replicate(n, randomGametes(freqs, F),
             simplify=FALSE)
 }
 

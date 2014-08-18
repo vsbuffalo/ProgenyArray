@@ -41,3 +41,22 @@ BEGIN_RCPP
     return __sexp_result;
 END_RCPP
 }
+// allele_ll
+NumericVector allele_ll(IntegerVector progeny_genos, double ehet, double ehom, double freq, IntegerVector father_genos);
+RcppExport SEXP ProgenyArray_allele_ll(SEXP progeny_genosSEXP, SEXP ehetSEXP, SEXP ehomSEXP, SEXP freqSEXP, SEXP father_genosSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< IntegerVector >::type progeny_genos(progeny_genosSEXP );
+        Rcpp::traits::input_parameter< double >::type ehet(ehetSEXP );
+        Rcpp::traits::input_parameter< double >::type ehom(ehomSEXP );
+        Rcpp::traits::input_parameter< double >::type freq(freqSEXP );
+        Rcpp::traits::input_parameter< IntegerVector >::type father_genos(father_genosSEXP );
+        NumericVector __result = allele_ll(progeny_genos, ehet, ehom, freq, father_genos);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
