@@ -282,14 +282,13 @@ is Poisson $mn$. Thus, for $E[X] < 0$ implies $mn < 0$
 E[c] < 0
 
 
-recombination events
-between homologous 
+\subsection{Missing Data}
 
-
-
-Parental haplotypes are inferred using windowed-approach: since half-sibs are
-separated by only two meioses, we assume that there are no recombinations
-within a window. 
+Each sib family will have missing genotypes data at some loci/individual
+combinations. The k-means clustering approach used to cluster progeny by their
+shared haplotype does not allow for missing data. A simple strategy for this is
+using listwise deletion: removing any row that contains a missing genotype for
+any individual.
 
 
 \bibliographystyle{plainnat}

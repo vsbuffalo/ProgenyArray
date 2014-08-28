@@ -16,8 +16,12 @@ createIndividuals <- function(n, freqs, F=0) {
             simplify=FALSE)
 }
 
-haplotypes2NoisyGenotypes <- function(x, ehet, ehom) {
-  do.call(cbind, lapply(x, function(y) addGenotypeError(rowSums(y), ehet, ehom)))
+haplotypes2NoisyGenotypes <- function(x, ehet, ehom, na_rate=0) {
+  d <- do.call(cbind, lapply(x, function(y) addGenotypeError(rowSums(y), ehet, ehom)))
+  if (na_rate == 0)
+    return(d)
+  d[as.logical(rbinom(length(d), 1, na_rate))] <- NA_integer_
+  d
 }
 
 #' Simulate a half-sib family, fixed number of sites
@@ -46,7 +50,8 @@ haplotypes2NoisyGenotypes <- function(x, ehet, ehom) {
 sibFamily <- function(nprogeny, nsites,
                       rates=c(selfing=0.5, halfsib=0.2, fullsib=0.3),
                       nfullsib_fathers=2, mom_inbred=FALSE,
-                      father_F=0.1, ehet=0.8, ehom=0.1) {
+                      father_F=0.1, ehet=0.8, ehom=0.1,
+                      na_rate=0) {
 
   # n is number of parents, an overestimate. Assuming no selfing or fullsibs,
   # this is at most 2*nprogeny (each kid has separate parents)
@@ -90,10 +95,10 @@ sibFamily <- function(nprogeny, nsites,
                       cbind(mother_gamete, father_gamete)
                     }, mother_gamete_i, father_gamete_i, fathers,
                     SIMPLIFY=FALSE)
-  genos <- haplotypes2NoisyGenotypes(progeny, ehet, ehom)
+  genos <- haplotypes2NoisyGenotypes(progeny, ehet, ehom, na_rate)
 
   # parent genotypes
-  parent_genos <- haplotypes2NoisyGenotypes(parents, ehet, ehom)
+  parent_genos <- haplotypes2NoisyGenotypes(parents, ehet, ehom, na_rate)
   list(progeny=genos, metadata=d, freqs=freqs,
        haplos=parents, genos=parent_genos)
 }

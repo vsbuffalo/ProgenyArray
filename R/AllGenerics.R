@@ -1,4 +1,5 @@
 # AllGenerics.R -- 
+
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
@@ -7,7 +8,6 @@
 setGeneric("isSelfed", function(x) {
            standardGeneric("isSelfed")
              })
-
 
 #' Accessor for alternate alleles
 #'
@@ -129,6 +129,19 @@ setGeneric("lodcutoff<-", function(x, value) {
 setGeneric("lodcutoff", function(x) {
            standardGeneric("lodcutoff")
              })
+
+#' Calculate allele frequencies
+#'
+setGeneric("calcFreqs", function(x) {
+           standardGeneric("calcFreqs")
+             })
+
+#' Getter for frequencies
+#'
+setGeneric("freqs", function(x) {
+           standardGeneric("freqs")
+             })
+
 
 #### Generics for SimulationData
 

@@ -37,6 +37,28 @@ alleleFreqs <- function(x, min=FALSE) {
   return(out)
 }
 
+
+#' Calculate allele frequencies from parents in a ProgenyArray
+#'
+#' @param x a ProgenyArray object
+#'
+#' @export
+setMethod("calcFreqs", "ProgenyArray",
+          function(x) {
+            x@freqs <- alleleFreqs(parentGenotypes(x))
+            x
+})
+
+#' Getter for allele frequencies
+#'
+#' @param x a ProgenyArray object
+setMethod("freqs", "ProgenyArray",
+          function(x) {
+            if (length(freqs) == 0)
+              stop("allele frequencies have not been calculated, run calcFreqs")
+            x@freqs
+})
+
 #' Calculate genotype frequencies.
 #'
 #' @param x a genotype matrix

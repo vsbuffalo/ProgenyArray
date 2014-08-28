@@ -12,14 +12,15 @@ library(rmarkdown)
 library(Rcpp)
 library(parallel)
 library(caret)
+library(reshape2)
 options(mc.cores=4)
-
+set.seed(42)
 ```
 
 ## Simulate Sibling Family with Selfs
 
 ```{r}
-sf <- sibFamily(70, 1000)
+sf <- sibFamily(10, 1000)
 ```
 
 How do these separate in principal component space?
@@ -83,18 +84,19 @@ incor <- sapply(famsize, function(n) {
 
 ```{r}
 
-probAllele <- function(gp, freq, ehet, ehom) {
-  error <- genotypingErrorMatrix(ehet, ehom)
-  hw <- c((1-freq)^2, 2*freq*(1-freq), (1-freq)^2)
-  ag = matrix(c(1, 1/2, 0, 0, 1/2, 1), ncol=2)
-  pagp(gp, freq, error, hw, ag)
-}
-
-haploImpute <- function(geno, parent_geno, fathers, freqs, ehet=0.8, ehom=0.1) {
-  km <- kmeans(t(geno), 2)
+haploImputeWindow <- function(geno, parent_geno, fathers, freqs, fun=kmeans, ehet=0.8, ehom=0.1) {
+  geno_na <- na.omit(geno)
+  if (nrow(geno_na) < 1) {
+    warning("cannot run k-means on this window: all loci contian NA values")
+    return(NULL)
+  }
+  nremoved <- length(na.action(geno_na))
+  #if (nremoved > 1) warning(sprintf("%d ind")
+  km <- fun(t(geno_na), 2)
   hap_geno <- list(geno[, km$cluster == 1], geno[, km$cluster == 2])
   out <- lapply(1:2, function(which_hap) {
-                hap_geno <- geno[, km$cluster == which_hap]
+                # iterate haplotype imputation for each cluster
+                hap_geno <- geno[, km$cluster == which_hap, drop=FALSE]
                 hap_fathers <- fathers[km$cluster == which_hap]
                 ll <- lapply(1:nrow(hap_geno), function(i) {
                              allele_ll(hap_geno[i, ], ehet, ehom, freqs[i],
@@ -104,12 +106,158 @@ haploImpute <- function(geno, parent_geno, fathers, freqs, ehet=0.8, ehom=0.1) {
   })
 }
 
-ll <- haploImpute(sf$progeny, sf$geno, sf$metadata$father, sf$freqs)
 
 
+
+
+# example run:
+
+ll <- haploImputeWindow(sf$progeny, sf$geno, sf$metadata$father, sf$freqs, ehet=0.1, ehom=0.1)
+
+mom <- sf$haplos[[1]]
 h1 <- apply(ll[[1]], 1, which.max) - 1L
 h2 <- apply(ll[[2]], 1, which.max) - 1L
 
+```
+
+Variable family size.
+
+```{r}
+famsizes <- c(5, seq(10, 80, 10))
+
+hamming <- function(x, y) sum(x != y)
+
+hapConfusion <- function(inferred, real) {
+  if (hamming(inferred[, 1], real[, 1]) < hamming(inferred[, 1], real[, 2])) {
+    out <- list(confusionMatrix(inferred[, 1], real[, 1]),
+                confusionMatrix(inferred[, 2], real[, 2]))
+  } else {
+    out <- list(confusionMatrix(inferred[, 1], real[, 2]),
+                confusionMatrix(inferred[, 2], real[, 1]))
+  }
+  return(out)
+}
+
+accs <- lapply(famsizes, function(fs) {
+ replicate(10, {
+           sf <- sibFamily(fs, 1000)
+           ll <- haploImputeWindow(sf$progeny, sf$geno, sf$metadata$father, sf$freqs, ehet=0.1, ehom=0.1)
+           mom <- sf$haplos[[1]]
+           h1 <- apply(ll[[1]], 1, which.max) - 1L
+           h2 <- apply(ll[[2]], 1, which.max) - 1L
+           cm <- hapConfusion(cbind(h1, h2), mom)
+           sapply(cm, function(x) x$overall['Accuracy'])
+  })
+})
+
+# each list element is a matrix, with two rows, each row both haplotypes'
+# accuracies. So we munge:
+reshapeReplicatesSimResults <- function(results, var, varname) {
+  tmp <- do.call(rbind, results)
+  d <- as.data.frame(tmp, row.names=1:nrow(tmp))
+  d[, varname] <- rep(var, each=2)
+  melt(d, id=varname)[, c(varname, 'value')]
+}
+
+d <- reshapeReplicatesSimResults(accs, famsizes, "famsize")
+p <- ggplot(d, aes(x=famsize, y=value)) + geom_point() + geom_smooth(se=FALSE)
+p <- p + xlab("family size") + ylab("imputation accuracy")
+print(p)
 
 ```
 
+or using boxplot:
+
+```{r}
+p <- ggplot(d) + geom_boxplot(aes(x=as.factor(famsize), y=value))
+p <- p + xlab("family size") + ylab("imputation accuracy")
+p <- p + scale_y_continuous(limits=c(0, 1))
+print(p)
+
+```
+
+## With cclust's cclust
+
+From the `cclust` package.
+
+
+```{r}
+famsizes <- c(5, seq(10, 80, 10))
+
+hapConfusion <- function(inferred, real) {
+  if (hamming(inferred[, 1], real[, 1]) < hamming(inferred[, 1], real[, 2])) {
+    out <- list(confusionMatrix(inferred[, 1], real[, 1]),
+                confusionMatrix(inferred[, 2], real[, 2]))
+  } else {
+    out <- list(confusionMatrix(inferred[, 1], real[, 2]),
+                confusionMatrix(inferred[, 2], real[, 1]))
+  }
+  return(out)
+}
+
+accs <- lapply(famsizes, function(fs) {
+ replicate(10, {
+           sf <- sibFamily(fs, 1000)
+           llkm <- haploImputeWindow(sf$progeny, sf$geno, sf$metadata$father, sf$freqs, ehet=0.1, ehom=0.1)
+           llcc <- haploImputeWindow(sf$progeny, sf$geno, sf$metadata$father, sf$freqs, ehet=0.1, ehom=0.1)
+           mom <- sf$haplos[[1]]
+           h1km <- apply(llkm[[1]], 1, which.max) - 1L
+           h2km <- apply(llkm[[2]], 1, which.max) - 1L
+           h1cc <- apply(llcc[[1]], 1, which.max) - 1L
+           h2cc <- apply(llcc[[2]], 1, which.max) - 1L
+           cmkm <- hapConfusion(cbind(h1km, h2km), mom)
+           cmcc <- hapConfusion(cbind(h1cc, h2cc), mom)
+           setNames(sapply(c(cmkm, cmcc), function(x) x$overall['Accuracy']), c("km", "km", "cc", "cc"))
+  })
+})
+
+# munge data together
+tmp <- do.call(rbind, accs)
+d <- as.data.frame(tmp, row.names=1:nrow(tmp))
+d$method <- rep(c("kmeans", "kmeans", "cclust", "cclust"), rep=nrow(tmp)/4) # FIX
+d$famsize <- rep(famsizes, each=4)
+dm <- melt(d, id=c("method", "famsize"))[, c("famsize", "method", "value")]
+ggplot(dm, aes(x=famsize, y=value, color=method)) + geom_point() + geom_smooth(se=FALSE)
+
+}
+```
+
+Therefore, not much of a difference - we use cclust because it's faster and has
+better prediction abilities:
+
+```
+# on large sib family 100,000 loci
+system.time(kmeans(t(sf$genos), 2))
+ user  system elapsed
+ 0.189   0.012   0.201
+system.time(cclust(t(sf$genos), 2))
+ user  system elapsed
+ 0.041   0.003   0.043
+```
+
+## With Missing Data
+
+```{r}
+
+missing <- seq(0.01, 0.15, by=0.01)
+na_accs <- lapply(missing, function(m) {
+ replicate(10, {
+           sf <- sibFamily(30, 1000, na_rate=m)
+           ll <- haploImputeWindow(sf$progeny, sf$geno, sf$metadata$father, sf$freqs, ehet=0.1, ehom=0.1)
+           mom <- sf$haplos[[1]]
+           h1 <- apply(ll[[1]], 1, which.max) - 1L
+           h2 <- apply(ll[[2]], 1, which.max) - 1L
+           cm <- hapConfusion(cbind(h1, h2), mom)
+           sapply(cm, function(x) x$overall['Accuracy'])
+  })
+})
+
+# each list element is a matrix, with two rows, each row both haplotypes'
+# accuracies. So we munge:
+
+d <- reshapeReplicatesSimResults(na_accs, missing, "missing")
+p <- ggplot(d, aes(x=missing, y=value)) + geom_point() + geom_smooth(se=FALSE, color="red")
+p <- p + xlab("proportion missing at random") + ylab("imputation accuracy") + ggtitle("haplotype imputation accuracy (famsize=30)")
+print(p)
+
+```
