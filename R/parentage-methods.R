@@ -22,6 +22,10 @@ caclulateLODs <- function(x) {
   d
 }
 
+isErroRate <- function(x) {
+  return(x < 1 & x >= 0 & length(x) == 1)
+}
+
 #' Infer parents of all progeny in a ProgenyArray
 #'
 #' inferParents() infers the parents of all ProgenyArray by calculating the
@@ -35,7 +39,8 @@ caclulateLODs <- function(x) {
 setMethod("inferParents", c(x="ProgenyArray"),
 function(x, ehet, ehom, verbose=TRUE) {
   #freqs <- alleleFreqs(progenyGenotypes(x))[x@complete_loci]
-  freqs <- freqs(pa)[x@complete_loci]
+  if (!isErroRate(ehet) || !isErroRate(ehom)) stop("both ehet and ehom must be in [0, 1) and have length 1")
+  freqs <- freqs(x)[x@complete_loci]
   stopifnot(all(freqs > 0 & freqs < 1)) # nothing fixed
   parents <- parentGenotypes(x)[x@complete_loci, ]
   kids <- progenyGenotypes(x)[x@complete_loci, ]
