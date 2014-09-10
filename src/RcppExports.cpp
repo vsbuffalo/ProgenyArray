@@ -41,19 +41,73 @@ BEGIN_RCPP
     return __sexp_result;
 END_RCPP
 }
-// allele_ll
-NumericVector allele_ll(IntegerVector progeny_genos, double ehet, double ehom, double freq, IntegerVector father_genos);
-RcppExport SEXP ProgenyArray_allele_ll(SEXP progeny_genosSEXP, SEXP ehetSEXP, SEXP ehomSEXP, SEXP freqSEXP, SEXP father_genosSEXP) {
+// pa_gp_ext
+Eigen::Vector2d pa_gp_ext(int gp, double freq, double ehet, double ehom);
+RcppExport SEXP ProgenyArray_pa_gp_ext(SEXP gpSEXP, SEXP freqSEXP, SEXP ehetSEXP, SEXP ehomSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
         Rcpp::RNGScope __rngScope;
-        Rcpp::traits::input_parameter< IntegerVector >::type progeny_genos(progeny_genosSEXP );
+        Rcpp::traits::input_parameter< int >::type gp(gpSEXP );
+        Rcpp::traits::input_parameter< double >::type freq(freqSEXP );
         Rcpp::traits::input_parameter< double >::type ehet(ehetSEXP );
         Rcpp::traits::input_parameter< double >::type ehom(ehomSEXP );
+        Eigen::Vector2d __result = pa_gp_ext(gp, freq, ehet, ehom);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// pg_theta_ext
+NumericMatrix pg_theta_ext(int gp, double freq, double ehet, double ehom);
+RcppExport SEXP ProgenyArray_pg_theta_ext(SEXP gpSEXP, SEXP freqSEXP, SEXP ehetSEXP, SEXP ehomSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< int >::type gp(gpSEXP );
         Rcpp::traits::input_parameter< double >::type freq(freqSEXP );
-        Rcpp::traits::input_parameter< IntegerVector >::type father_genos(father_genosSEXP );
-        NumericVector __result = allele_ll(progeny_genos, ehet, ehom, freq, father_genos);
+        Rcpp::traits::input_parameter< double >::type ehet(ehetSEXP );
+        Rcpp::traits::input_parameter< double >::type ehom(ehomSEXP );
+        NumericMatrix __result = pg_theta_ext(gp, freq, ehet, ehom);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// max_ll_matrix
+NumericMatrix max_ll_matrix(NumericMatrix x, NumericMatrix y, IntegerVector which_max);
+RcppExport SEXP ProgenyArray_max_ll_matrix(SEXP xSEXP, SEXP ySEXP, SEXP which_maxSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP );
+        Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP );
+        Rcpp::traits::input_parameter< IntegerVector >::type which_max(which_maxSEXP );
+        NumericMatrix __result = max_ll_matrix(x, y, which_max);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// geno_ll
+List geno_ll(IntegerMatrix progeny_genos, IntegerMatrix father_genos, IntegerVector which_father, NumericVector freqs, double ehet, double ehom);
+RcppExport SEXP ProgenyArray_geno_ll(SEXP progeny_genosSEXP, SEXP father_genosSEXP, SEXP which_fatherSEXP, SEXP freqsSEXP, SEXP ehetSEXP, SEXP ehomSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< IntegerMatrix >::type progeny_genos(progeny_genosSEXP );
+        Rcpp::traits::input_parameter< IntegerMatrix >::type father_genos(father_genosSEXP );
+        Rcpp::traits::input_parameter< IntegerVector >::type which_father(which_fatherSEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type freqs(freqsSEXP );
+        Rcpp::traits::input_parameter< double >::type ehet(ehetSEXP );
+        Rcpp::traits::input_parameter< double >::type ehom(ehomSEXP );
+        List __result = geno_ll(progeny_genos, father_genos, which_father, freqs, ehet, ehom);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);

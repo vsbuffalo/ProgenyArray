@@ -9,7 +9,19 @@ countGenotypes <- function(x) {
     .Call('ProgenyArray_countGenotypes', PACKAGE = 'ProgenyArray', x)
 }
 
-allele_ll <- function(progeny_genos, ehet, ehom, freq, father_genos) {
-    .Call('ProgenyArray_allele_ll', PACKAGE = 'ProgenyArray', progeny_genos, ehet, ehom, freq, father_genos)
+pa_gp_ext <- function(gp, freq, ehet, ehom) {
+    .Call('ProgenyArray_pa_gp_ext', PACKAGE = 'ProgenyArray', gp, freq, ehet, ehom)
+}
+
+pg_theta_ext <- function(gp, freq, ehet, ehom) {
+    .Call('ProgenyArray_pg_theta_ext', PACKAGE = 'ProgenyArray', gp, freq, ehet, ehom)
+}
+
+max_ll_matrix <- function(x, y, which_max) {
+    .Call('ProgenyArray_max_ll_matrix', PACKAGE = 'ProgenyArray', x, y, which_max)
+}
+
+geno_ll <- function(progeny_genos, father_genos, which_father, freqs, ehet, ehom) {
+    .Call('ProgenyArray_geno_ll', PACKAGE = 'ProgenyArray', progeny_genos, father_genos, which_father, freqs, ehet, ehom)
 }
 
