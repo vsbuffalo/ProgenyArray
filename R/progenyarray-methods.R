@@ -13,6 +13,21 @@ whichLociPolymorphic <- function(x) {
   which(freq > 0 & freq < 1)
 }
 
+#' Manually set the allele frequencies
+#'
+#' @param x a ProgenyArray object
+#'
+#' @name progenyNames
+#' @export
+setReplaceMethod("freqs", "ProgenyArray", function(x, value) {
+  x@freqs <- value
+  # prune fixed or incomplete loci
+  not_fixed <- whichLociPolymorphic(x@parents_geno)
+  x@complete_loci <- intersect(whichLociComplete(x@progeny_geno), not_fixed)
+  x
+})
+
+
 #' Constructor new ProgenyArray object.
 #'
 #' Create a new ProgenyArray object for storing genotyping and other data from

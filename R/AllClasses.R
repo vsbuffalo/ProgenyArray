@@ -13,7 +13,7 @@
 #' @slot mothers integer vector indicating the inferred mother of each progeny
 #' @slot fathers integer vector indicating the inferred father of each progeny
 #' @slot parents dataframe with inferred parents and model information
-#' @slot complete_loci which loci are complete in the parents
+#' @slot complete_loci which loci are not all missing or fixed in the parents
 #' @slot parent_lods matrices from C++ parentage routine (for debugging)
 #' @slot lodcutoff the LOD cutoff used in parentage inference
 #'

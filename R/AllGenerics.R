@@ -1,4 +1,4 @@
-# AllGenerics.R -- 
+# AllGenerics.R --
 
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
@@ -44,7 +44,6 @@ setGeneric("suppliedMothers", function(x) {
 setGeneric("parents", function(x, names=TRUE) {
            standardGeneric("parents")
              })
-
 
 #' Accessor for progenyGenotypes
 #'
@@ -142,6 +141,11 @@ setGeneric("freqs", function(x) {
            standardGeneric("freqs")
              })
 
+#' Setter for frequencies
+#'
+setGeneric("freqs<-", function(x, value) {
+           standardGeneric("freqs<-")
+             })
 
 #### Generics for SimulationData
 

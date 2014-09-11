@@ -28,7 +28,6 @@ haplotypes2NoisyGenotypes <- function(x, ehet, ehom, na_rate=0) {
 #'
 #' @export n size of halfsib family
 #' @export nsites number of sites
-#' @export mgamete_probs probability of getting particular mother gamete
 #' @export rates selfing, halfsib, fullsib proportions
 #' @export nfullsib_fathers number of fathers contributing to fullsib families
 #' @export father_F proportion of fathers that are inbred
@@ -48,7 +47,7 @@ haplotypes2NoisyGenotypes <- function(x, ehet, ehom, na_rate=0) {
 #'   \item \code{hs_geno} halfsib father's genotypes (with error)
 #'   \item \code{fs_geno} fullsib father's genotypes (with error)
 #' }
-sibFamily <- function(nprogeny, nsites, mgamete_probs=c(0.5, 0.5),
+sibFamily <- function(nprogeny, nsites,
                       rates=c(selfing=0.5, halfsib=0.2, fullsib=0.3),
                       nfullsib_fathers=2, mom_inbred=FALSE,
                       father_F=0.1, ehet=0.8, ehom=0.1,
@@ -84,7 +83,7 @@ sibFamily <- function(nprogeny, nsites, mgamete_probs=c(0.5, 0.5),
 
   # generate which father gamete we will receive.
   father_gamete_i <- sample(1:2, nprogeny, replace=TRUE)
-  mother_gamete_i <- sample(1:2, nprogeny, prob=mgamete_probs, replace=TRUE)
+  mother_gamete_i <- sample(1:2, nprogeny, replace=TRUE)
 
   # metadata dataframe to keep track of everything
   d <- data.frame(type=ind_type, mother=1L, father=fathers,
