@@ -37,21 +37,23 @@ parent. Responsibilities are also a valuable diagnostic.
 
 # EM
 
-Prototype EM algorithm in R -- this won't be very idiomatic R since it's going
-to be rewritten in C++.
-
 ```{r}
-```
 
-```{r}
+
+load_all("~/Projects/ProgenyArray")
+set.seed(0)
 
 sf <- sibFamily(40, 1000, ehet=0.8, ehom=0.1)
 pa <- ProgenyArray(sf$progeny, sf$genos, mothers=sf$metadata$mother)
 pa <- calcFreqs(pa)
 pa <- inferParents(pa, 0.8, 0.1)
+rngs <- GRanges("1", IRanges(1:1000, width=1))
+chrom <- GRanges("1", IRanges(1, 1000))
+pa@ranges <- rngs
 
-res <- emHap(pa, 1L, "parent_1", 1:nrow(progenyGenotypes(pa)), 0.8, 0.1)
+ph <- phaseSibFamily(pa, 1, "1", chrom)
 
+# res <- emHap(pa, 1L, "parent_1", 1:nrow(progenyGenotypes(pa)), 0.8, 0.1)
 
 ```
 
