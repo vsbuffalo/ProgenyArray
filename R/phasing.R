@@ -38,7 +38,9 @@ haploDiff <- function(x) {
 logSumExpPosterior <- function(liks, pi) {
   # log sum exp trick for list of matrices of loci x individuals, each for a
   # particular haplotype
-  bc <- t(mapply(function(x, p) colSums(log(x)) + log(p), liks, pi))
+  # note: cluster membership should be biased based on missingess since the same loci
+  # are missingin both ll calss
+  bc <- t(mapply(function(x, p) colSums(log(x), na.rm=TRUE) + log(p), liks, pi))
 
   # denominator (same for both haplotype probs), uses TLOP
   max_bc <- apply(bc, 2, max)
@@ -52,6 +54,29 @@ isConverged <- function(ll, ll_last, eps, debug=FALSE) {
   if (debug) message(sprintf("%d of %d individuals converged", sum(conv), length(conv)))
   if (all(conv)) return(TRUE)
   return(FALSE)
+}
+
+reshapeIndLL <- function(lls_inds) {
+  # reshape the individual likelihoods from each iteration so that they're a
+  # dataframe
+  ll <- do.call(rbind, mapply(function(x, hap) {
+              d <- as.data.frame(do.call(rbind, x))
+              colnames(d) <- paste('ind', seq_len(ncol(d)), sep="_")
+              d$iter <- seq_len(nrow(d))
+              d$hap <- hap
+              d
+  }, lls_inds, 1L:2L, SIMPLIFY=FALSE))
+  setNames(melt(ll, id.vars=c('iter', 'hap')), c("iter", "hap", "ind", "ll"))
+}
+
+reshapeHapLL <- function(lls_haps) {
+  # reshape the loci likelihoods, from each iteration
+  do.call(rbind, mapply(function(x, i) {
+          d <- as.data.frame(x)
+          d$loci <- seq_len(nrow(x))
+          d$iter <- i
+          setNames(d, c("h1", "h2", "loci", "iter"))
+  }, lls_haps, seq_along(lls_haps), SIMPLIFY=FALSE))
 }
 
 
@@ -92,6 +117,8 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
 
   thetas <- list()
   lls_inds <- list(list(), list())
+  lls_haps <- list()
+  #clusters <- list()
   converged <- FALSE
 
   for (i in seq_len(max_iter)) {
@@ -104,8 +131,8 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
       mlm2 <- do.call(rbind, lapply(1:nrow(theta_mle), function(i) liks[[1L+theta_mle[i, 2]]][i,]))
       #browser()
       # individual log likelihoods
-      ll1 <- colSums(log(mlm1))
-      ll2 <- colSums(log(mlm2))
+      ll1 <- colSums(log(mlm1), na.rm=TRUE)
+      ll2 <- colSums(log(mlm2), na.rm=TRUE)
       # append these log likeloods to list
       lls_inds[[1]] <- c(lls_inds[[1]], list(ll1))
       lls_inds[[2]] <- c(lls_inds[[2]], list(ll2))
@@ -122,6 +149,7 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
      # E step
      ll_resp <- logSumExpPosterior(list(mlm1, mlm2), pi)
      resp <- exp(logSumExpPosterior(list(mlm1, mlm2), pi))
+     #clusters <- c(clusters, list(resp))
      #browser()
     }
 
@@ -140,27 +168,25 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
                           })
     })
     # log likelihoods of each loci's allele, for both haplotypes k in (1, 2)
-    lls <- lapply(ll_weighted, function(hap) do.call(cbind, lapply(hap, rowSums)))
+    # TODO: missingness handled acceptably here?
+    lls <- lapply(ll_weighted, function(hap) do.call(cbind, lapply(hap, function(x) rowSums(x, na.rm=TRUE))))
+    #browser()
+    lls_haps <- c(lls_haps, lls)
 
     # MLE alleles for each haplotype k in (1, 2)
     theta_mle <- do.call(cbind, lapply(lls, function(x) apply(x, 1, whichmaxNA)-1L))
     thetas <- c(thetas, list(theta_mle))
   }
-  ll <- do.call(rbind, mapply(function(x, hap) {
-              d <- as.data.frame(do.call(rbind, x))
-              colnames(d) <- paste('ind', seq_len(ncol(d)), sep="_")
-              d$iter <- seq_len(nrow(d))
-              d$hap <- hap
-              d
-  }, lls_inds, 1L:2L, SIMPLIFY=FALSE))
-  ll <- setNames(melt(ll, id.vars=c('iter', 'hap')), c("iter", "hap", "ind", "ll"))
-  return(list(haplos=theta_mle, cluster=resp, pi=pi, niter=i, converged=converged,
-         ll=rbind(ll1, ll2), all_thetas=thetas, all_lls=ll, init=a))
+  iter_ind_lls <- reshapeIndLL(lls_inds)
+  iter_hap_lls <- reshapeHapLL(lls_haps)
+  return(list(haplos=theta_mle, cluster=resp, pi=pi, niter=i-1, converged=converged,
+         ll=rbind(ll1, ll2), iter_theta=thetas, iter_ind_lls=iter_ind_lls, iter_hap_lls=iter_hap_lls,
+         init=a))
 }
 
 matchLabels <- function(x, y) {
   # return version of x, with most consistent labels compared to
-  # x
+  # x.
   tmp <- na.exclude(cbind(x, y))
   a <- tmp[, 1] == tmp[, 2]
   b <- tmp[, 1] == ifelse(tmp[, 2] == 1, 2L, 1L)
@@ -211,6 +237,118 @@ snpTiles <- function(x, chrom, nsnps) {
   split(seq_len(nloci), group)
 }
 
+snpTiles2Physical <- function(phasing, x, chrom, tiles) {
+  # check that we have big enough enough SNP tiles to trust
+  # the length of first tile as nsnps
+  stopifnot(length(tiles[[1]]) == length(tiles[[2]]))
+  nsnps <- length(tiles[[1]])
+  this_chrom <- as.logical(seqnames(x@ranges) == chrom)
+  ranges_chrom <- x@ranges[this_chrom]
+  tmp <- do.call(rbind, lapply(tiles, function(x) {
+    start <- start(ranges_chrom[min(x)])
+    end <- end(ranges_chrom[max(x)])
+    c(start, end)
+  }))
+  data.frame(loci=1:length(tiles), start=tmp[, 1], end=tmp[, 2])
+}
+
+plotPhasingSnpTiles <- function(x, phasing, chrom, tiles, buffer=1e4, reverse_colors=FALSE) {
+
+  if (is.na(buffer)) # choose a good one
+    buffer <- seqlengths(x@ranges)[chrom] * 0.0003318355 # this looked good
+  d <- ligation2dataframe(simpleLigation(phasing))
+  pos <- snpTiles2Physical(phasing, x, chrom, tiles)
+  d <- cbind(d, pos[match(d$loci, pos$loci), ])
+  if (buffer > 0) {
+    buf <- floor(buffer/2)
+    d$start <- d$start + buf
+    d$end <- d$end - buf
+  }
+  if (reverse_colors)
+    d$hap <- ifelse(d$hap == "1", "2", "1")
+  ggplot(d) + geom_segment(aes(x=start, xend=end, y=ind, yend=ind, color=as.factor(hap)), size=3)
+}
+
+accuracy <- function(x, y) {
+  tbl <- table(x, y)
+  sum(tbl[1,1] + tbl[2,2])/sum(tbl)
+}
+
+reorderByClosest <- function(x, y) {
+  # given two loci x 2 matrices of haplotypes (LL or alleles) create an index
+  # that reorders y so that it is the closest corresponding haplotype
+  # someCompareFun(x, y[, reoderByClosest(x, y)])
+  ac1 <- accuracy(x[, 1], y[, 1]) # correct orderr
+  ac2 <- accuracy(x[, 1], y[, 2])
+  if (ac2 > ac1)
+    return(2L:1L)  # swamp columns
+  return(1L:2L)
+}
+
+#' Agreement Rate (across both haplotypes) for all windows
+#'
+#' @param ph1 phasing results from haplotype imputation 1
+#' @param ph2 phasing results from haplotype imputation 2
+hapAgreementStats <- function(ph1, ph2, x=NULL, tiles=NULL, chrom=NULL) {
+  # ff(): set levels so homozygous regions can be compared
+  ff <- function(x) factor(x, levels=0:1)
+  if (!is.null(tiles) && !is.null(chrom))
+    pos <- snpTiles2Physical(ph1, x, chrom, tiles)
+  accs <- lapply(1:length(ph1), function(i) {
+                 # haplos
+                 x <- ph1[[i]]$haplos
+                 y <- ph2[[i]]$haplos
+                 progeny_na <- ph1[[i]]$progeny_na # same for both; same underlying geno data
+                 father_na <- ph1[[i]]$father_na
+                 # reorder columns to match haplotype labels so they're consistent
+                 swap <- reorderByClosest(x, y)
+                 y <- y[, swap]
+                 is_swapped <- all(swap == 2L:1L)
+                 data.frame(window=i, h1=accuracy(x[, 1], y[, 1]), h2=accuracy(x[, 2], y[, 2]),
+                            swapped=is_swapped, progeny_na, father_na)
+  })
+  d <- do.call(rbind, accs)
+  if (!is.null(tiles))
+    d$window <- rowMeans(pos[, 2:3])
+  d
+}
+
+getHapLikelihoods <- function(x) {
+  # convenience function to get haplotype log likelihoods from last iteration
+  d <- x$iter_hap_lls
+  d[x$niter == d$iter, ]
+}
+
+hapAgreementPerTile <- function(ph1, ph2, x=NULL, tiles=NULL, chrom=NULL) {
+  # version of aggrement that returns raw matrix of
+  # when imputed haplotypes agree
+  ff <- function(x) factor(x, levels=0:1)
+  if (!is.null(tiles) && !is.null(chrom))
+    pos <- snpTiles2Physical(ph1, x, chrom, tiles)
+  ff <- function(x) factor(x, levels=0:1)
+  accs <- lapply(1:length(ph), function(i) {
+                 # haplos
+                 x <- ph1[[i]]$haplos
+                 y <- ph2[[i]]$haplos
+                 progeny_na <- ph1[[i]]$progeny_na # same for both; same underlying geno data
+                 father_na <- ph1[[i]]$father_na
+                 # reorder columns to match haplotype labels so they're consistent
+                 swap <- reorderByClosest(x, y)
+                 y <- y[, swap]
+                 is_swapped <- all(swap == 2L:1L)
+                 matches <- x == y
+                 # extract last iteration's max likelihoods, then swap accordingly
+                 lls1 <- getHapLikelihoods(ph1[[i]])[, c("h1", "h2")]
+                 lls2 <- getHapLikelihoods(ph2[[i]])[, c("h1", "h2")][, swap]
+                 data.frame(window=i, hm1=matches[, 1], hm2=matches[, 2],
+                            ph1_h1=lls1[, 1], ph1_h2=lls1[, 2],
+                            ph2_h1=lls2[, 1], ph2_h2=lls2[, 2])
+  })
+  do.call(rbind, accs)
+}
+
+
+
 #' Phase Sibling Family by Haplotype Imputation
 
 #'
@@ -252,17 +390,53 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
   stopifnot(max(tiles[[length(tiles)]]) == nrow(pgeno))
   # impute each window
   out <- lapply(tiles, function(loci) {
-         message(sprintf("on loci number %d", min(loci)))
-         res <- emHaplotypeImpute(pgeno[loci, d$progeny],
-                                  fgeno[loci, ],
-                                  other_parents,
-                                  freqs[loci], ehet, ehom, na_thresh=na_thresh)
-         res$nloci <- length(loci)
-         res$progeny_na <- sum(is.na(pgeno[loci, d$progeny]))/length(pgeno[loci, d$progeny])
-         res$father_na <- sum(is.na(fgeno[loci, ]))/length(fgeno[loci, ])
-         return(res)
+                message(sprintf("on loci number %d", min(loci)))
+                res <- emHaplotypeImpute(pgeno[loci, d$progeny],
+                                         fgeno[loci, ],
+                                         other_parents,
+                                         freqs[loci], ehet, ehom, na_thresh=na_thresh)
+                res$nloci <- length(loci)
+                res$progeny_na <- sum(is.na(pgeno[loci, d$progeny]))/length(pgeno[loci, d$progeny])
+                res$progeny_na_per_loci <- rowMeans(is.na(pgeno[loci, d$progeny]))
+                res$father_na <- sum(is.na(fgeno[loci, ]))/length(fgeno[loci, ])
+                res$completeness <- sum(apply(!is.na(res$haplos), 1, all))/nrow(res$haplos)
+                return(res)
   })
   out
+}
+
+#' A diagnostic plot of haplotype imputation of simulated data
+#'
+#' @param res phasing results
+#' @param sim simulation data
+emPlot <- function(res, sim) {
+  real_haps <- sim$haplos[[1]]
+  r1 <- confusionMatrix(res$haplos[, 1], real_haps[, 1])$overall['Accuracy']
+  r2 <- confusionMatrix(res$haplos[, 1], real_haps[, 2])$overall['Accuracy']
+  hap_order <- 1:2
+  if (r2 > r1)
+    hap_order <- 2:1
+  #ani.record(reset = TRUE)
+  var_sites <- !apply(real_haps == 0, 1, all) # all zero sites
+  #orig <- haps2dataframe(data.frame(rep(FALSE, nrow(real_haps)), rep(FALSE, nrow(real_haps))))
+  #levelplot(z ~ x + y, orig, col.regions=c("red","white"))
+  iters <- as.integer(as.character(res$all_lls$iter))
+  saveGIF({
+    mapply(function(tt, i) {
+         #print(table(tt[var_sites, ] == real_haps[var_sites, hap_order]))
+         #p <- levelplot(z ~ x + y, haps2dataframe((tt[var_sites, ] == real_haps[var_sites, hap_order])), col.regions=c("red","white"))
+         d <- haps2dataframe(1L + (tt[var_sites, ] == real_haps[var_sites, hap_order]))
+         d$z <- factor(d$z, levels=1:2)
+         #p <- ggplot(d) + geom_tile(aes(x=x,y=y, fill=z))
+         p1 <- levelplot(z ~ x + y, d, col.regions=c("red","grey"), colorkey=FALSE, xlab="locus", ylab="haplotype\n(incorrect alleles are red)",
+                         scales=list(y=list(at=1:2, labels=c("h1", "h2"))))
+         p2 <- xyplot(ll ~ iter | ind, res$all_lls[iters <= i , ], group=hap, type='l', xlim=c(0, max(iters)),
+                      ylab="log likelihood", xlab="iteration", ylim=c(1.1*min(res$all_lls$ll), 0.9*max(res$all_lls$ll)))
+         grid.arrange(p1, p2, ncol=2)
+         #ani.record()
+    }, res$all_thetas, 1:max(iters))
+    #oopts = ani.options(interval = 0.5)
+  }, ani.width = 1000, ani.height=800)
 }
 
 
