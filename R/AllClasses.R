@@ -16,35 +16,42 @@
 #' @slot complete_loci which loci are not all missing or fixed in the parents
 #' @slot parent_lods matrices from C++ parentage routine (for debugging)
 #' @slot lodcutoff the LOD cutoff used in parentage inference
+#' @slot phased a list of phased tiles for all chromosomes
+#' @slot tiles a list of tiles for all chromosomes
 #'
 #' @exportClass ProgenyArray
 setClass("ProgenyArray",
          representation=representation(ranges="GRanges",
-                                       ref="character",
-                                       alt="character",
-                                       progeny_geno="matrix",
-                                       parents_geno="matrix",
-                                       supplied_mothers="integer",
-                                       # TODO we can get rid of this
-                                       mothers="integer", 
-                                       fathers="integer",
-                                       freqs="numeric",
-                                       parents="data.frame",
-                                       complete_loci="integer",
-                                       parent_lods="list",
-                                       lodcutoff="numeric"),
+             ref="character",
+             alt="character",
+             progeny_geno="matrix",
+             parents_geno="matrix",
+             supplied_mothers="integer", # TODO we can get rid of this
+             mothers="integer",
+             fathers="integer",
+             freqs="numeric",
+             parents="data.frame",
+             complete_loci="integer",
+             parent_lods="list",
+             lodcutoff="numeric",
+             phased="list", # list of lists of lists (parents, chroms, and tiles)
+             tiles="list", # list of lists (chroms and tiles)
+             ligation="integer"),
          prototype=prototype(ranges=GRanges(),
-                             ref=character(),
-                             alt=character(),
-                             supplied_mothers=integer(),
-                             mothers=integer(),
-                             fathers=integer(),
-                             freqs=numeric(),
-                             parents=data.frame(),
-                             lodcutoff=NA_real_),
+             ref=character(),
+             alt=character(),
+             supplied_mothers=integer(),
+             mothers=integer(),
+             fathers=integer(),
+             freqs=numeric(),
+             parents=data.frame(),
+             lodcutoff=NA_real_,
+             phased=list(),
+             tiles=list(),
+             ligation=NA_integer_),
          validity=function(object) {
-           if (nrow(object@progeny_geno) != nrow(object@parents_geno))
-             stop("number of progeny loci must equal number of parent loci")
+             if (nrow(object@progeny_geno) != nrow(object@parents_geno))
+                 stop("number of progeny loci must equal number of parent loci")
          })
 
 #' An S4 class that wraps a ProgenyArray object of noisy, missing data
@@ -66,30 +73,43 @@ setClass("ProgenyArray",
 #' @exportClass SimulatedProgenyArray
 setClass("SimulatedProgenyArray",
          representation=representation(nparent="integer",
-                                       nprogeny="integer",
-                                       nloci="integer",
-                                       selfing="numeric",
-                                       prop_parent_missing="numeric",
-                                       prop_progeny_missing="numeric",
-                                       ehet="numeric",
-                                       ehom="numeric",
-                                       # the full, non-missing genotype matrices
-                                       parent_geno="matrix",
-                                       progeny_geno="matrix",
-                                       mothers="integer",
-                                       fathers="integer",
-                                       progeny_array="ProgenyArray"),
+             nprogeny="integer",
+             nloci="integer",
+             selfing="numeric",
+             prop_parent_missing="numeric",
+             prop_progeny_missing="numeric",
+             ehet="numeric",
+             ehom="numeric",
+             # the full, non-missing genotype matrices
+             parent_geno="matrix",
+             progeny_geno="matrix",
+             mothers="integer",
+             fathers="integer",
+             progeny_array="ProgenyArray"),
          prototype=prototype(nparent=integer(),
-                             nprogeny=integer(),
-                             nloci=integer(),
-                             selfing=numeric(),
-                             prop_parent_missing=numeric(),
-                             prop_progeny_missing=numeric(),
-                             ehet=numeric(),
-                             ehom=numeric(),
-                             # the full, non-missing genotype matrices
-                             parent_geno=matrix(),
-                             progeny_geno=matrix(),
-                             mothers=integer(),
-                             fathers=integer()))
+             nprogeny=integer(),
+             nloci=integer(),
+             selfing=numeric(),
+             prop_parent_missing=numeric(),
+             prop_progeny_missing=numeric(),
+             ehet=numeric(),
+             ehom=numeric(),
+             # the full, non-missing genotype matrices
+             parent_geno=matrix(),
+             progeny_geno=matrix(),
+             mothers=integer(),
+             fathers=integer()))
 
+#' A container for tiles used for phasing by imputation
+#'
+#' @slot type a character describing the type of tile (position, SNP, genetic)
+#' @slot width the width of each tile
+#' @slot tiles a list of lists, with the first list containing all chromosomes' tiles, and the second list containing the indices of the SNPs per tile
+#' @exportClass PhasingTiles
+setClass("PhasingTiles",
+         representation=representation(type="character",
+                                       width="integer",
+                                       tiles="list"),
+         prototype=prototype(type=character(),
+                             width=integer(),
+                             tiles=list()))

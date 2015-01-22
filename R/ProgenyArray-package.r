@@ -10,5 +10,7 @@
 #' @importMethodsFrom Biobase samples
 #' @useDynLib ProgenyArray
 #' @importFrom Rcpp sourceCpp
+#' @importFrom dplyr group_by
+#' @importFrom dplyr summarise, n
 NULL
 

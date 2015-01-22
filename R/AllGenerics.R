@@ -47,13 +47,13 @@ setGeneric("parents", function(x, names=TRUE) {
 
 #' Accessor for progenyGenotypes
 #'
-setGeneric("progenyGenotypes", function(x, names=TRUE) {
+setGeneric("progenyGenotypes", function(x, seqname=NULL) {
            standardGeneric("progenyGenotypes")
              })
 
 #' Accessor for parentGenotypes
 #'
-setGeneric("parentGenotypes", function(x, names=TRUE) {
+setGeneric("parentGenotypes", function(x, seqname=NULL) {
            standardGeneric("parentGenotypes")
              })
 
@@ -147,10 +147,18 @@ setGeneric("freqs<-", function(x, value) {
            standardGeneric("freqs<-")
              })
 
+#' Phase all parents data in a ProgenyArray
+#'
+setGeneric("phaseParents", function(x, tiles, ehet=0.8, ehom=0.1,
+                                    na_thresh=0.8, parallel=FALSE, verbose=TRUE) {
+    standardGeneric("phaseParents")
+})
+
 #### Generics for SimulationData
 
 #' Getter for ProgenyArray object from a SimulationData object
 setGeneric("progenyArray", function(x) {
            standardGeneric("progenyArray")
           })
+
 

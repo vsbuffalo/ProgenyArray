@@ -40,7 +40,7 @@ parent. Responsibilities are also a valuable diagnostic.
 ```{r}
 
 
-load_all("~/Projects/ProgenyArray")
+#load_all("~/Projects/ProgenyArray")
 set.seed(0)
 
 sf <- sibFamily(40, 1000, ehet=0.8, ehom=0.1)

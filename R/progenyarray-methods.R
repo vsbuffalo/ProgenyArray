@@ -64,7 +64,7 @@ setMethod("show",
             cat(sprintf("ProgenyArray object: %d loci, %d parents, %d progeny\n",
                         nrow(object@progeny_geno), ncol(object@parents_geno),
                         ncol(object@progeny_geno)))
-            cat(sprintf("Number of chromosomes: %d\nObject size: %s Mb\n",
+            cat(sprintf(" number of chromosomes: %d\n object size: %s Mb\n",
                         length(seqlevels(object@ranges)),
                         round(object.size(object)/1024^2, 3)))
             # convience function for getting lengths
@@ -81,14 +81,14 @@ setMethod("show",
             nparents <- numOrNA(object@parents_geno)
             #nmothers <- numOrNA(object@mothers, unique=TRUE)
             nprogeny <- numOrNA(object@progeny_geno)
-            cat(sprintf("Number of progeny: %d\n", nprogeny))
-            cat(sprintf("Number of parents: %d\n", nparents))
+            cat(sprintf(" number of progeny: %d\n", nprogeny))
+            cat(sprintf(" number of parents: %d\n", nparents))
             #cat(sprintf("Number of fathers: %d\n", nfathers))
             #cat(sprintf("Number of mothers: %d\n", nmothers))
-            cat(sprintf("Proportion missing:\n  progeny: %0.3f\n  parents: %0.3f\n",
+            cat(sprintf(" proportion missing:\n   progeny: %0.3f\n  parents:  %0.3f\n",
                         sum(is.na(object@progeny_geno))/length(object@progeny_geno),
                         sum(is.na(object@parents_geno))/length(object@parents_geno)))
-            cat(sprintf("Number of complete parental loci: %d\n",
+            cat(sprintf(" number of complete parental loci: %d\n",
                         length(object@complete_loci)))
 
           })
@@ -100,8 +100,11 @@ setMethod("show",
 #' @export
 setMethod("parentGenotypes",
           c(x="ProgenyArray"),
-          function(x) {
-            return(x@parents_geno)
+          function(x, seqname=NULL) {
+            if (is.null(seqname))
+              return(x@parents_geno)
+            else
+              return(x@parents_geno[as.logical(seqnames(x@ranges) == seqname), ])
           })
 
 #' Accessor for progeny genotypes
@@ -110,8 +113,11 @@ setMethod("parentGenotypes",
 #' @export
 setMethod("progenyGenotypes",
           c(x="ProgenyArray"),
-          function(x) {
-            return(x@progeny_geno)
+          function(x, seqname=NULL) {
+            if (is.null(seqname))
+              return(x@progeny_geno)
+            else
+              return(x@progeny_geno[as.logical(seqnames(x@ranges) == seqname), ])
           })
 
 #' Accessor for parents \code{data.frame} in a ProgenyArray object

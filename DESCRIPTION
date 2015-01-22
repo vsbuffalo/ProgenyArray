@@ -13,7 +13,8 @@ Imports:
     Rcpp,
     RcppEigen,
     reshape2,
-    ggplot2
+    ggplot2,
+    dplyr
 Suggests:
     testthat
 LinkingTo: Rcpp, RcppEigen

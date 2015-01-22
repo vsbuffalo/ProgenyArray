@@ -1,7 +1,7 @@
 # phasing.R
 
 whichmaxNA <- function(x) {
-  # which.max that returns NA if all data is NA
+  # which.max that returns NA if any data is NA
   ifelse(any(is.na(x)), NA, which.max(x))
 }
 
@@ -18,6 +18,14 @@ clusterMAP <- function(x) {
 haploDiff <- function(x) {
   diff <- x[,1] == x[,2]
   sum(diff, na.rm=TRUE)/nrow(x)
+}
+
+rowSumsNA <- function(x) {
+  apply(x, 1, function(x) {
+        if (all(is.na(x)))
+          return(NA)
+        sum(x, na.rm=TRUE)
+  })
 }
 
 #
@@ -75,12 +83,14 @@ reshapeHapLL <- function(lls_haps) {
           d <- as.data.frame(x)
           d$loci <- seq_len(nrow(x))
           d$iter <- i
+          d[, 1] <- ifelse(d[, 1] == 0, NA, d[, 1])
+          d[, 2] <- ifelse(d[, 2] == 0, NA, d[, 2])
           setNames(d, c("h1", "h2", "loci", "iter"))
   }, lls_haps, seq_along(lls_haps), SIMPLIFY=FALSE))
 }
 
 
-#' Use EM Haplotype Phasing by Imputation Algorithm
+#' Use EM Haplotype Phasing by Imputation Algorithm (internal function)
 #'
 #' @param pgeno progeny genotypes
 #' @param fgeno father (or other parent) genotypes
@@ -169,11 +179,12 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
     })
     # log likelihoods of each loci's allele, for both haplotypes k in (1, 2)
     # TODO: missingness handled acceptably here?
-    lls <- lapply(ll_weighted, function(hap) do.call(cbind, lapply(hap, function(x) rowSums(x, na.rm=TRUE))))
+    lls <- lapply(ll_weighted, function(hap) do.call(cbind, lapply(hap, function(x) rowSumsNA(x))))
     #browser()
     lls_haps <- c(lls_haps, lls)
 
     # MLE alleles for each haplotype k in (1, 2)
+    #browser()
     theta_mle <- do.call(cbind, lapply(lls, function(x) apply(x, 1, whichmaxNA)-1L))
     thetas <- c(thetas, list(theta_mle))
   }
@@ -183,6 +194,11 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
          ll=rbind(ll1, ll2), iter_theta=thetas, iter_ind_lls=iter_ind_lls, iter_hap_lls=iter_hap_lls,
          init=a))
 }
+
+#' Phase all chromosomes
+#'
+#'
+#phase <- function(x, 
 
 matchLabels <- function(x, y) {
   # return version of x, with most consistent labels compared to
@@ -208,36 +224,16 @@ simpleLigation <- function(res, buffer=0.2) {
   matched_labels <- list(membership[1, ])
   for (i in seq(2, nrow(membership))) {
     ml <- matchLabels(matched_labels[[i-1]], membership[i,])
+    #ml <- relabel(rbind(matched_labels[[i-1]], membership[i,]))$cls
     matched_labels <- c(matched_labels, list(ml))
   }
   do.call(rbind, matched_labels)
 }
 
-physicalTiles <- function(x, chrom, tilewidth) {
-  tiles <- unlist(tileGenome(seqlengths(x@ranges)[chrom], tilewidth=tilewidth))
-  this_chrom <- as.logical(seqnames(x@ranges) == chrom)
-  # convert these tiles to a list of overlapping row loci indices
-  ranges_chrom <- x@ranges[this_chrom]
-  lapply(split(tiles, start(tiles)), function(tile_i) {
-         hits <- findOverlaps(ranges_chrom, tile_i)
-         loci <- queryHits(hits)
-         loci
-  })
-}
 
-snpTiles <- function(x, chrom, nsnps) {
-  this_chrom <- as.logical(seqnames(x@ranges) == chrom)
-  ranges_chrom <- x@ranges[this_chrom]
-  nloci <- length(ranges_chrom)
-  m <- floor(nloci/nsnps)
-  group <- rep(seq_len(m), each=nsnps)
-  # append small end group
-  group <- c(group, rep(m+1, nloci - length(group)))
-  stopifnot(length(group) == length(ranges_chrom))
-  split(seq_len(nloci), group)
-}
 
-snpTiles2Physical <- function(phasing, x, chrom, tiles) {
+
+snpTiles2Physical <- function(x, chrom, tiles) {
   # check that we have big enough enough SNP tiles to trust
   # the length of first tile as nsnps
   stopifnot(length(tiles[[1]]) == length(tiles[[2]]))
@@ -249,7 +245,8 @@ snpTiles2Physical <- function(phasing, x, chrom, tiles) {
     end <- end(ranges_chrom[max(x)])
     c(start, end)
   }))
-  data.frame(loci=1:length(tiles), start=tmp[, 1], end=tmp[, 2])
+  data.frame(tile=1:length(tiles), start=tmp[, 1], end=tmp[, 2],
+             midpoint=rowMeans(tmp[, 1:2]))
 }
 
 plotPhasingSnpTiles <- function(x, phasing, chrom, tiles, buffer=1e4, reverse_colors=FALSE) {
@@ -257,7 +254,7 @@ plotPhasingSnpTiles <- function(x, phasing, chrom, tiles, buffer=1e4, reverse_co
   if (is.na(buffer)) # choose a good one
     buffer <- seqlengths(x@ranges)[chrom] * 0.0003318355 # this looked good
   d <- ligation2dataframe(simpleLigation(phasing))
-  pos <- snpTiles2Physical(phasing, x, chrom, tiles)
+  pos <- snpTiles2Physical(x, chrom, tiles)
   d <- cbind(d, pos[match(d$loci, pos$loci), ])
   if (buffer > 0) {
     buf <- floor(buffer/2)
@@ -293,7 +290,7 @@ hapAgreementStats <- function(ph1, ph2, x=NULL, tiles=NULL, chrom=NULL) {
   # ff(): set levels so homozygous regions can be compared
   ff <- function(x) factor(x, levels=0:1)
   if (!is.null(tiles) && !is.null(chrom))
-    pos <- snpTiles2Physical(ph1, x, chrom, tiles)
+    pos <- snpTiles2Physical(x, chrom, tiles)
   accs <- lapply(1:length(ph1), function(i) {
                  # haplos
                  x <- ph1[[i]]$haplos
@@ -324,7 +321,7 @@ hapAgreementPerTile <- function(ph1, ph2, x=NULL, tiles=NULL, chrom=NULL) {
   # when imputed haplotypes agree
   ff <- function(x) factor(x, levels=0:1)
   if (!is.null(tiles) && !is.null(chrom))
-    pos <- snpTiles2Physical(ph1, x, chrom, tiles)
+    pos <- snpTiles2Physical(x, chrom, tiles)
   ff <- function(x) factor(x, levels=0:1)
   accs <- lapply(1:length(ph), function(i) {
                  # haplos
@@ -339,12 +336,27 @@ hapAgreementPerTile <- function(ph1, ph2, x=NULL, tiles=NULL, chrom=NULL) {
                  matches <- x == y
                  # extract last iteration's max likelihoods, then swap accordingly
                  lls1 <- getHapLikelihoods(ph1[[i]])[, c("h1", "h2")]
-                 lls2 <- getHapLikelihoods(ph2[[i]])[, c("h1", "h2")][, swap]
+                 ls2 <- getHapLikelihoods(ph2[[i]])[, c("h1", "h2")][, swap]
                  data.frame(window=i, hm1=matches[, 1], hm2=matches[, 2],
                             ph1_h1=lls1[, 1], ph1_h2=lls1[, 2],
                             ph2_h1=lls2[, 1], ph2_h2=lls2[, 2])
   })
   do.call(rbind, accs)
+}
+
+
+estimateTileGenotypeErrors <- function(x, ph, parent, tiles, chrom) {
+  pgeno <- progenyGenotypes(x, seqname=chrom)[, parent]
+  lapply(seq_along(tiles), function(i) {
+         tile <- tiles[[i]]
+         raw_geno <- pgeno[tile]
+         imputed <- rowSums(ph[[i]]$haplos)
+         table(imputed, raw_geno)
+  })
+}
+
+errorRates <- function(tile_errors) {
+  #TODO
 }
 
 
@@ -355,7 +367,7 @@ hapAgreementPerTile <- function(ph1, ph2, x=NULL, tiles=NULL, chrom=NULL) {
 #' @param x a ProgenyArray object
 #' @param parent parent for which to impute haplotypes
 #' @param chrom which chromosome to use
-#' @param tiles a list of loci indices for each phasing block
+#' @param tiles a PhasingTiles object
 #' @param ehet heterozygous error rate
 #' @param ehom homozygous error rate
 #' @param which_parent which parent (column in parents(x)) to use
@@ -364,7 +376,7 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
                            ehet=0.8, ehom=0.1,
                            which_parent="parent_1",
                            na_thresh=0.8) {
-  if (!(chrom %in% as.character(seqnames(x@ranges))))
+  if (!(chrom %in% seqlevels(x@ranges)))
     stop(sprintf("chromosome '%s' not in loci", as.character(chrom)))
 
   # get progeny for the supplied parent (according to which parent it is) --
@@ -374,8 +386,8 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
 
   # get genotype data for this chromosome
   this_chrom <- as.logical(seqnames(x@ranges) == chrom)
-  pgeno <- progenyGenotypes(x)[this_chrom, , drop=FALSE]
-  fgeno <- parentGenotypes(x)[this_chrom, , drop=FALSE]
+  pgeno <- progenyGenotypes(x, seqname=chrom)
+  fgeno <- parentGenotypes(x, seqname=chrom)
   stopifnot(nrow(pgeno) == nrow(fgeno))
   freqs <- freqs(x)[this_chrom]
 
@@ -384,13 +396,10 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
   stopifnot(d[, other_parent] %in% 1:ncol(fgeno))
 
   other_parents <- d[, other_parent] - 1L # since C++ is 0 indexed
-
-  # do we trust these tiles? largest index in last tile should be
-  # total length of rows
-  stopifnot(max(tiles[[length(tiles)]]) == nrow(pgeno))
+  
   # impute each window
-  out <- lapply(tiles, function(loci) {
-                message(sprintf("on loci number %d", min(loci)))
+  out <- lapply(tiles@tiles[[chrom]], function(loci) {
+                #message(sprintf("on loci number %d", min(loci)))
                 res <- emHaplotypeImpute(pgeno[loci, d$progeny],
                                          fgeno[loci, ],
                                          other_parents,
@@ -404,6 +413,36 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
   })
   out
 }
+
+#' Phase all Parents in a ProgenyArray object
+#'
+#' @param x a ProgenyArray object
+#' @param tiles a PhasingTiles object
+#' @param ehet heterozygous error rate
+#' @param ehom homozygous error rate
+#' @param na_thresh how much missingness to tolerate before pruning individual
+#' @param parallel whether to run across multiple cores (use option mc.cores to set number of cores)
+#' @param verbose report status messages
+setMethod("phaseParents", c(x="ProgenyArray"),
+          function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8,
+                   parallel=FALSE, verbose=TRUE) {
+              lpfun <- lapply
+              if (parallel) lpfun <- mclapply
+              # first, note that some mothers may be inconsistent; that is
+              # the inferred parent may not be a mother included. We use NA for
+              # these.
+              x@phased <- lapply(seq_len(ncol(parentGenotypes(x))), function(par) {
+                  chroms <- seqlevels(x@ranges)
+                  setNames(lpfun(chroms, function(chr) {
+                      if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
+                      phaseSibFamily(x, par, chr, tiles, ehet=ehet,
+                                     ehom=ehom, na_thresh=na_thresh)
+                  }), chroms)
+              })
+              names(x@phased) <- colnames(parentGenotypes(x))
+              return(x)
+          })                    
+
 
 #' A diagnostic plot of haplotype imputation of simulated data
 #'

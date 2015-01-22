@@ -94,12 +94,6 @@ HWPlot <- function(x) {
   p
 }
 
-
-#### BEGIN DEPRECATED ####
-# These functions were used to generate Mendelian transmission probabilties
-# when parentage was inferred in R. Now this is done in C++; these are just
-# here for debugging/testing
-
 MendelianTransmissionList <- function(x) {
     # Mendelian transition matrix, in list notation for readability
     # TODO: we can build this up programmatically using Kronecker products.
@@ -124,6 +118,86 @@ MendelianTransmissionMatrix <- function() {
   stopifnot(all(sapply(1:3, function(i) m[[i]] == MT[, , i])))
   return(MT)
 }
+
+validGenotypes <- function(x, allowNA=TRUE) {
+  genos <- seq(0, 2)
+  if (allowNA)
+    genos <- c(NA, genos)
+  all(x %in% genos)
+}
+
+MendelianInconsistencies <- function(parent1, child, parent2=NULL) {
+  m <- MendelianTransmissionMatrix() > 0
+  stopifnot(validGenotypes(c(parent1, child)))
+  parent1 <- parent1+1L
+  child <- child+1L
+  if (is.null(parent2)) {
+    validGenotypes(parent2)
+    return(mapply(function(p1, c) all(!m[, c, p1]), parent1, child))
+  }
+  parent2 <- parent2+1L
+  return(mapply(function(p1, p2, c) !m[p2, c, p1], parent1, parent2, child))
+}
+
+#' Trio Mendelian inconsistency across full-sib family per phased tile
+#'
+#' @param parent_1 parent 1
+#' @param parent_2 parent 2
+#' @param chrom which chromosome was used
+#' @param tiles tiles used in phasing
+#' @param phased_1 phasing results for parent 1 (if \code{NULL}, uses genotype data)
+#' @param phased_2 phasing results for parent 2 (if \code{NULL}, uses genotype data)
+#' @export
+miMatrixPerTile <- function(x, parent_1, parent_2, chrom, tiles, phased_1=NULL, phased_2=NULL) {
+  mi <- lapply(1:length(tiles), function(i) {
+    tile_i <- tiles[[i]]
+    if (!is.null(phased_1)) {
+      p1_geno <- rowSums(phased_1[[i]]$haplos)
+    } else {
+      p1_geno <- unname(parentGenotypes(x, seqname=chrom)[tile_i, parent_1])
+    }
+    if (!is.null(phased_2)){
+      p2_geno <- rowSums(phased_2[[i]]$haplos)
+    } else {
+      p2_geno <- unname(parentGenotypes(x, seqname=chrom)[tile_i, parent_2])
+    }
+    pars <- parents(x)
+    progi <- pars$progeny[pars$parent_1 == parent_1 & pars$parent_2 == parent_2]
+    pgeno <- progenyGenotypes(x, seqname=chrom)[tile_i, progi]
+    stopifnot(nrow(pgeno) == length(p1_geno))
+    stopifnot(length(p2_geno) == length(p1_geno))
+    apply(pgeno, 2, function(child) MendelianInconsistencies(p1_geno, child, p2_geno))
+  })
+  mi
+}
+
+#' Mendelian inconsistency rates across a chromosome
+#'
+#' @param mi results from \code{miMatrixPerTile}
+#' @param x ProgenyArray object
+#' @param chrom which chromosome was used
+#' @param tiles tiles used in phasing
+miRates <- function(mi, x, chrom, tiles) {
+  tmp <- lapply(1:length(mi), function(i) {
+                m <- mi[[i]]
+                tmp <- setNames(melt(m), c("index", "progeny", "value"))
+                out <- summarise(group_by(tmp, 'index'),
+                          inconsistent=sum(value, na.rm=TRUE)/sum(!is.na(value)),
+                          na=sum(is.na(value))/length(value))
+                out$tile <- i
+                out
+  })
+  d <- do.call(rbind, tmp)
+  d$pos <- start(x@ranges[as.logical(seqnames(x@ranges) == chrom)])
+  d
+}
+
+
+#### BEGIN DEPRECATED ####
+# These functions were used to generate Mendelian transmission probabilties
+# when parentage was inferred in R. Now this is done in C++; these are just
+# here for debugging/testing
+
 
 conditionalOffspringParentMatrix <- function(freq) {
   #  P(Go | Gm)
