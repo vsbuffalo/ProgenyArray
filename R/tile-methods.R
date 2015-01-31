@@ -36,8 +36,7 @@ loadGeneticMap <- function(mapfile) {
 }
 
 #' This uses a monotonic polynomial regression (9th order by default) to smooth
-#' over the genentic map marker windows, and then extrapolate the genetic
-#' distance between genotyping markers.
+#' over the genentic map markers
 approxGeneticMap <- function(genmap, degree=9) {
   # check if multicore available
   ncores <- getOption("mc.cores", 2L)
@@ -48,13 +47,20 @@ approxGeneticMap <- function(genmap, degree=9) {
   chrs <- split(gm, gm$seqnames)
   if (!all(!sapply(chrs, function(x) is.unsorted(x$position) & is.unsorted(x$cumulative))))
       stop("Genetic map unsorted; either position or cumulative distance not sorted.")
-
-  approx <- lpfun(chrs, function(d) monpol(cumulative ~ position, data=d,
-                                           degree=degree))
+  ## create some points at origin to force it through (TODO)
+  # this is hack because damn MonoPoly doesn't obey y ~ x + 0
+  n <- 13
+  origin <- data.frame(NA, NA, rep(0, n), NA, rep(0, n))
+  colnames(origin) <- colnames(gm)
+  approx <- lpfun(chrs, function(d) {
+      monpol(cumulative ~ position, data=rbind(origin, d), degree=degree)
+  })
   names(approx) <- unique(gm$seqnames)
   list(fits=approx, map=genmap)
 }
 
+#' Use Monotonic Polynomial Regression Fits to Predict Genetic Distance Between
+#' Arbitary Markers
 predictGeneticMap <- function(approx, ranges, as_df=TRUE) {
   # make data dataframe from range object
   data <- data.frame(seqnames=seqnames(ranges), position=start(ranges))
@@ -62,26 +68,84 @@ predictGeneticMap <- function(approx, ranges, as_df=TRUE) {
   keep_chrs <- tmp %in% unique(approx$map$seqnames)
   if (!all(keep_chrs)) {
       msg <- "%d chromosomes in ProgenyArray object do not matching chromosomes in genetic map: %s"
-      warning(sprintf(msg, sum(keep_chrs), paste(tmp[!keep_chrs], sep=", ")))
+      #warning(sprintf(msg, sum(keep_chrs), paste(tmp[!keep_chrs], sep=", ")))
   }
   # drop chroms not in gen map
   data <- data[data$seqnames %in% unique(approx$map$seqnames), ]
   data$seqnames <- droplevels(data$seqnames)
+  rang <- group_by(approx$map, seqnames) %>% 
+                    summarize(min=min(position), max=max(position))
   pred <- unlist(lapply(split(data, data$seqnames), function(d) {
-      fit <- approx$fits[[as.character(d$seqnames[1])]]
-      unname(predict(fit, d)[, 1])
+      chr <- as.character(d$seqnames[1])
+      fit <- approx$fits[[chr]]
+      res <- unname(predict(fit, d)[, 1])
+      # we need to handle edge cases, since silly MonoPoly won't
+      # allow regression through the origin
+      ## minval <- approx$map$cumulative[approx$map$seqnames == chr][1]
+      ## res <- ifelse(d$position < rang$min[rang$seqnames == chr], minval, res)
+
+      # now we buffered fit with (0,0), so just force any slightly neg points 
+      # positive. Yes this is an ugly hack, but MonoPoly doesn't do regression
+      # through origin
+      res <- ifelse(res < 0, 0, res)
+      res
   }))
   if (!as_df) return(pred)
-  data$pred <- pred
+  data$smoothed_cumulative <- pred
   data
 }
 
-plotGeneticMap <- function(genmap, approx) {
+#' Function to inspect the Montonic Polynomial Regression Smoothing of Genetic Map
+plotGeneticMap <- function(genmap, approx, tiles=NULL) {
   p <- ggplot(approx) 
   p <- p + facet_wrap(~seqnames, scales="free")
   p <- p + geom_point(data=genmap, aes(x=position, y=cumulative), size=1)
-  p <- p + geom_line(aes(x=position, y=gendist), color="blue")
+  p <- p + geom_line(aes(x=position, y=smoothed_cumulative), color="blue")
+  if (!is.null(tiles)) {
+      dt <- tiles
+      dt$y <- rowMeans(dt[, c("start", "end")])
+      p <- p + geom_segment(data=dt, color="red",
+                            aes(x=phys_start, xend=phys_end, y=y, yend=y))
+  }
   p
+}
+
+#' Create a PhasingTiles object for tiles based on genetic distances
+#'
+#' @param x a ProgenyArray object
+#' @param mapfile a tab-delimited file (no header) of marker, chromosome, position, cumulative genetic distance
+#' @param length length of each tile in centiMorgans (actual windows may be a bit larger than this)
+#'
+#' @export
+geneticTiles <- function(x, mapfile, length) {
+    gm <- loadGeneticMap(mapfile)
+    message("Approximating genetic map with monotonic polynomial regression...")
+    ap <- approxGeneticMap(gm)
+    message("Smoothing genetic map...")
+    pgm <- predictGeneticMap(ap, x@ranges)
+    chrs <- split(pgm, pgm$seqnames)
+    # create tiles for chroms
+    message("Creating tiles...")
+    tmp <- lapply(names(chrs), function(nam) {
+        chr <- chrs[[nam]]
+        # total gen dist
+        dist <- max(chr$smoothed_cumulative)
+        tiles <- cut(chr$smoothed_cumulative, breaks=floor(dist/length), dig.lab=10)
+        chr$tiles <- tiles
+        bins <- extractCutLabels(tiles)
+        bins$tiles <- tiles
+        bins$seqnames <- nam
+        pos <- chr %>% group_by(tiles) %>% summarize(start=min(position), end=max(position))
+        i <- match(bins$tiles, pos$tiles)
+        bins$phys_start <- pos$start[i]
+        bins$phys_end <- pos$end[i]
+        list(bins, tiles)
+    })
+    tiles <- lapply(tmp, `[[`, i=2)
+    names(tiles) <- names(chrs)
+    bins <- do.call(rbind, lapply(tmp, `[[`, i=1))
+    info <- list(physical_tiles=bins, mapfile=mapfile, approx=ap, genetic_map=pgm)
+    new("PhasingTiles", type="genetic", width=as.integer(length), tiles=tiles, info=info)
 }
 
 #' Create a PhasingTiles object for tiles based on physical distances
@@ -94,7 +158,7 @@ physicalTiles <- function(x, width) {
   tiles <- lapply(seqlevels(x@ranges),
                   function(chrom) .physicalTiles(x, chrom, width))
   names(tiles) <- seqlevels(x@ranges)
-  new("PhasingTiles", "physical", as.integer(width), tiles)
+  new("PhasingTiles", type="physical", width=as.integer(width), tiles=tiles)
 }
 
 #' Create a PhasingTiles object for tiles based on fixed number of SNPs per tile

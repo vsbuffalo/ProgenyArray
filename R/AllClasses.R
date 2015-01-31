@@ -109,11 +109,13 @@ setClass("SimulatedProgenyArray",
 #' @slot type a character describing the type of tile (position, SNP, genetic)
 #' @slot width the width of each tile
 #' @slot tiles a list of lists, with the first list containing all chromosomes' tiles, and the second list containing the indices of the SNPs per tile
+#'  @slot info a list containing supplementary info about tiles, e.g genetic map and related smoothed versions
 #' @exportClass PhasingTiles
 setClass("PhasingTiles",
          representation=representation(type="character",
-                                       width="integer",
-                                       tiles="list"),
-         prototype=prototype(type=character(),
-                             width=integer(),
-                             tiles=list()))
+             width="integer",
+             tiles="list",
+             info="list"),             
+             prototype=prototype(type=character(),
+                 width=integer(),
+                 tiles=list(), info=list()))
