@@ -16,7 +16,8 @@
 #' @slot complete_loci which loci are not all missing or fixed in the parents
 #' @slot parent_lods matrices from C++ parentage routine (for debugging)
 #' @slot lodcutoff the LOD cutoff used in parentage inference
-#' @slot phased a list of phased tiles for all chromosomes
+#' @slot phased_parents a list of parents' phased tiles for all chromosomes
+#' @slot phased_parents_metadata a list of phasing parameters
 #' @slot tiles a list of tiles for all chromosomes
 #'
 #' @exportClass ProgenyArray
@@ -34,7 +35,9 @@ setClass("ProgenyArray",
              complete_loci="integer",
              parent_lods="list",
              lodcutoff="numeric",
-             phased="list", # list of lists of lists (parents, chroms, and tiles)
+             # list of lists of lists (parents, chroms, and tiles)
+             phased_parents="list",
+             phased_parents_metadata="list",
              tiles="list", # list of lists (chroms and tiles)
              ligation="integer"),
          prototype=prototype(ranges=GRanges(),
@@ -46,7 +49,8 @@ setClass("ProgenyArray",
              freqs=numeric(),
              parents=data.frame(),
              lodcutoff=NA_real_,
-             phased=list(),
+             phased_parents=list(),
+             phased_parents_metadata=list(),
              tiles=list(),
              ligation=NA_integer_),
          validity=function(object) {

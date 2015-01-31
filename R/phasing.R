@@ -101,9 +101,11 @@ reshapeHapLL <- function(lls_haps) {
 #' @param free_pi whether to allow pi to vary (can cause identifiability issues
 #' @param na_thresh how much missingness to tolerate before pruning individual
 #' @param max_iter maximum number of EM iterations before quiting
+#' @param init optional initial reponsibilities (advanced use)
+#' @param extra include optional debugging output (advanced use)
 #' @param eps epsilon in log likelihood before calling convergence
 emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
-                              free_pi=FALSE, na_thresh=0.8, init=NULL,
+                              free_pi=FALSE, na_thresh=0.8, init=NULL, extra=FALSE,
                               max_iter=60L, eps=1e-9) {
   nloci <- length(pgeno)
   nind <- ncol(pgeno)
@@ -190,9 +192,12 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
   }
   iter_ind_lls <- reshapeIndLL(lls_inds)
   iter_hap_lls <- reshapeHapLL(lls_haps)
-  return(list(haplos=theta_mle, cluster=resp, pi=pi, niter=i-1, converged=converged,
-         ll=rbind(ll1, ll2), iter_theta=thetas, iter_ind_lls=iter_ind_lls, iter_hap_lls=iter_hap_lls,
-         init=a))
+  out <- list(haplos=theta_mle, cluster=resp, pi=pi, niter=i-1, converged=converged,
+              ll=rbind(ll1, ll2), init=a, haplos_lls=lls)
+  if (extra)
+      out <- c(out, list(iter_theta=thetas, iter_ind_lls=iter_ind_lls,
+                         iter_hap_lls=iter_hap_lls))
+  out
 }
 
 #' Phase all chromosomes
@@ -229,9 +234,6 @@ simpleLigation <- function(res, buffer=0.2) {
   }
   do.call(rbind, matched_labels)
 }
-
-
-
 
 snpTiles2Physical <- function(x, chrom, tiles) {
   # check that we have big enough enough SNP tiles to trust
@@ -414,6 +416,11 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
   out
 }
 
+phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
+    list(tile_type=tiles@type, tile_width=tiles@width,
+         ehet=ehet, ehom=ehom, na_thresh=na_thresh)
+}
+
 #' Phase all Parents in a ProgenyArray object
 #'
 #' @param x a ProgenyArray object
@@ -431,7 +438,8 @@ setMethod("phaseParents", c(x="ProgenyArray"),
               # first, note that some mothers may be inconsistent; that is
               # the inferred parent may not be a mother included. We use NA for
               # these.
-              x@phased <- lapply(seq_len(ncol(parentGenotypes(x))), function(par) {
+              pars <- seq_len(ncol(parentGenotypes(x)))[1:2]
+              x@phased_parents <- lapply(pars, function(par) {
                   chroms <- seqlevels(x@ranges)
                   setNames(lpfun(chroms, function(chr) {
                       if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
@@ -439,9 +447,10 @@ setMethod("phaseParents", c(x="ProgenyArray"),
                                      ehom=ehom, na_thresh=na_thresh)
                   }), chroms)
               })
-              names(x@phased) <- colnames(parentGenotypes(x))
+              names(x@phased_parents) <- colnames(parentGenotypes(x))[1:2]
+              x@phased_parents_metadata <- phasingMetadata(tiles, ehet, ehom, na_thresh)
               return(x)
-          })                    
+          })
 
 
 #' A diagnostic plot of haplotype imputation of simulated data
@@ -478,6 +487,53 @@ emPlot <- function(res, sim) {
   }, ani.width = 1000, ani.height=800)
 }
 
+extractFromPhases <- function(x, item) {
+    # extract each parents phase from a list, reshaope to dataframe
+    # parents, chromosomes, tiles
+    unname(mapply(function(par, nm) {
+        tmp <- lapply(par, function(chr) {
+            do.call(rbind, lapply(chr, function(t) {
+                as.data.frame(t[[item]])
+            }))
+        })
+        d <- do.call(rbind, tmp)
+        colnames(d) <- paste(nm, c("1", "2"), sep="_")
+        d
+    }, x, names(x), SIMPLIFY=FALSE))
+}
+
+hapLR <- function(x) {
+    # create a likelihood ratio from most likely allele / least likely
+    apply(lls, 1, function(x) {
+        i <- which.max(x)
+        x[i]/x[setdiff(1:2, i)]
+    })
+}
+
+reshapeParentPhases <- function(x, tiles) {
+    haps <- do.call(cbind, extractFromPhases(x@phased_parents, 'haplos'))
+    lls <- extractFromPhases(x@phased_parents, 'haplos_ll')
+    lrt1 <- hapLR(lls[[1]])
+    lrt2 <- hapLR(lls[[2]])
+    colnames(ll) <- paste("ll", colnames(ll), sep="_")
+    cbind(haps, ll, lrt1, lrt2)
+}
+
+
+#' Output parent phasing results to tab-delimited file
+#'
+#' @param x a ProgenyArray object
+#' @param file filename for output
+#'
+#' @param verbose report status messages
+setMethod("saveParentPhases", c(x="ProgenyArray"),
+          function(x, file) {
+              if (length(x@phased_parents) == 0) stop("no phasing data present")
+              conn <- file(file)
+           
+
+
+})
 
 
 #
