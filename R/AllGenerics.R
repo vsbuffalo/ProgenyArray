@@ -154,10 +154,10 @@ setGeneric("phaseParents", function(x, tiles, ehet=0.8, ehom=0.1,
     standardGeneric("phaseParents")
 })
 
-#' Output all parent phasing data
+#' Output all a simplified table of phasing data
 #'
-setGeneric("saveParentPhases", function(x, file) {
-    standardGeneric("saveParentPhases")
+setGeneric("phases", function(x, file) {
+    standardGeneric("phases")
 })
 
 #### Generics for SimulationData

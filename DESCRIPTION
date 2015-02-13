@@ -14,7 +14,8 @@ Imports:
     RcppEigen,
     reshape2,
     ggplot2,
-    dplyr
+    dplyr,
+    MonoPoly
 Suggests:
     testthat
 LinkingTo: Rcpp, RcppEigen

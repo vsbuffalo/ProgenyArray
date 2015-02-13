@@ -39,9 +39,8 @@ loadGeneticMap <- function(mapfile) {
 #' over the genentic map markers
 approxGeneticMap <- function(genmap, degree=9) {
   # check if multicore available
-  ncores <- getOption("mc.cores", 2L)
-  lpfun <- lapply
-  if (ncores > 1) lpfun <- mclapply
+  ncores <- getOption("mc.cores")
+  lpfun <- if (!is.null(ncores) && ncores > 1) mclapply else lapply
 
   gm <- genmap
   chrs <- split(gm, gm$seqnames)
@@ -73,8 +72,8 @@ predictGeneticMap <- function(approx, ranges, as_df=TRUE) {
   # drop chroms not in gen map
   data <- data[data$seqnames %in% unique(approx$map$seqnames), ]
   data$seqnames <- droplevels(data$seqnames)
-  rang <- group_by(approx$map, seqnames) %>% 
-                    summarize(min=min(position), max=max(position))
+  rang <- summarise(group_by(approx$map, seqnames),
+                    min=min(position), max=max(position))
   pred <- unlist(lapply(split(data, data$seqnames), function(d) {
       chr <- as.character(d$seqnames[1])
       fit <- approx$fits[[chr]]
@@ -96,13 +95,15 @@ predictGeneticMap <- function(approx, ranges, as_df=TRUE) {
 }
 
 #' Function to inspect the Montonic Polynomial Regression Smoothing of Genetic Map
-plotGeneticMap <- function(genmap, approx, tiles=NULL) {
+plotGeneticMap <- function(tiles) {
+  genmap <- tiles@info$genetic_map
+  approx <- tiles@info$smoothed_genetic_map
   p <- ggplot(approx) 
   p <- p + facet_wrap(~seqnames, scales="free")
   p <- p + geom_point(data=genmap, aes(x=position, y=cumulative), size=1)
   p <- p + geom_line(aes(x=position, y=smoothed_cumulative), color="blue")
   if (!is.null(tiles)) {
-      dt <- tiles
+      dt <- tiles@info$physical_tiles
       dt$y <- rowMeans(dt[, c("start", "end")])
       p <- p + geom_segment(data=dt, color="red",
                             aes(x=phys_start, xend=phys_end, y=y, yend=y))
@@ -125,6 +126,7 @@ geneticTiles <- function(x, mapfile, length) {
     pgm <- predictGeneticMap(ap, x@ranges)
     chrs <- split(pgm, pgm$seqnames)
     # create tiles for chroms
+    rngs <- x@ranges
     message("Creating tiles...")
     tmp <- lapply(names(chrs), function(nam) {
         chr <- chrs[[nam]]
@@ -132,19 +134,29 @@ geneticTiles <- function(x, mapfile, length) {
         dist <- max(chr$smoothed_cumulative)
         tiles <- cut(chr$smoothed_cumulative, breaks=floor(dist/length), dig.lab=10)
         chr$tiles <- tiles
+        # turn these tiles groups into loci groups
+        # by generating sequence of length of num SNPs
+        tile_ints <- split(seq_along(rngs[seqnames(rngs) == nam]), as.integer(tiles))
+        # parse the cut labels to get the start/end positions
         bins <- extractCutLabels(tiles)
         bins$tiles <- tiles
         bins$seqnames <- nam
-        pos <- chr %>% group_by(tiles) %>% summarize(start=min(position), end=max(position))
+        # find min and max physical positions for these genetic tiles
+        pos <- summarise(group_by(chr, tiles), start=min(position), end=max(position))
+        # match everything up, to add as columns to bins
         i <- match(bins$tiles, pos$tiles)
         bins$phys_start <- pos$start[i]
         bins$phys_end <- pos$end[i]
-        list(bins, tiles)
+        list(bins, tile_ints)
     })
     tiles <- lapply(tmp, `[[`, i=2)
     names(tiles) <- names(chrs)
     bins <- do.call(rbind, lapply(tmp, `[[`, i=1))
-    info <- list(physical_tiles=bins, mapfile=mapfile, approx=ap, genetic_map=pgm)
+    # calculate actual lengths
+    mn_width <- mean(apply(bins[, 1:2], 1,
+                           function(x) abs(diff(x))))
+    info <- list(physical_tiles=bins, mapfile=mapfile, approx=ap,
+                 genetic_map=gm, smoothed_genetic_map=pgm, width=mn_width)
     new("PhasingTiles", type="genetic", width=as.integer(length), tiles=tiles, info=info)
 }
 
@@ -174,18 +186,6 @@ snpTiles <- function(x, nsnps) {
   new("PhasingTiles", type="snp", width=as.integer(nsnps), tiles=tiles)
 }
 
-#' Create a PhasingTiles object for tiles based on genetic distance
-#'
-#' @param x a ProgenyArray object
-#' @param map a \code{data.frame} of three columns: chrom, position, genetic distance
-#' @param width the genetic distance (in centiMorgans) of each tile
-#'
-#' @export
-geneticTiles <- function(x, map, width) {
-    stop("Not implemented yet.")
-}
-
-
 #' Pretty-print a PhasingTiles object
 #'
 #' @param object a PhasingTiles object
@@ -196,5 +196,9 @@ setMethod("show",
           function(object) {
               cat(sprintf("PhasingTiles (%s)\n", object@type))
               cat(sprintf(" number of chromosomes: %d\n", length(object@tiles)))
-              cat(sprintf(" width: %d\n", object@width))
+              if (object@type != "genetic") {
+                  cat(sprintf(" width: %d\n", object@width))
+              } else {
+                  cat(sprintf(" width: %d cM (specified), %0.3f cM (actual) \n", object@width, object@info$width))
+              }
           })

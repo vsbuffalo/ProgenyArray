@@ -433,13 +433,13 @@ phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
 setMethod("phaseParents", c(x="ProgenyArray"),
           function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8,
                    parallel=FALSE, verbose=TRUE) {
-              lpfun <- lapply
-              if (parallel) lpfun <- mclapply
+              lpfun <- if (!is.null(ncores) && ncores > 1) mclapply else lapply
+
               # first, note that some mothers may be inconsistent; that is
               # the inferred parent may not be a mother included. We use NA for
               # these.
               pars <- seq_len(ncol(parentGenotypes(x)))[1:2]
-              x@phased_parents <- lapply(pars, function(par) {
+              x@phased_parents <- lpfun(pars, function(par) {
                   chroms <- seqlevels(x@ranges)
                   setNames(lpfun(chroms, function(chr) {
                       if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
@@ -450,6 +450,36 @@ setMethod("phaseParents", c(x="ProgenyArray"),
               names(x@phased_parents) <- colnames(parentGenotypes(x))[1:2]
               x@phased_parents_metadata <- phasingMetadata(tiles, ehet, ehom, na_thresh)
               return(x)
+          })
+
+llratio <- function(x) max(x)/min(x) # TODO think about this
+
+#' Merge phasing data
+#'
+#' @param x a ProgenyArray object with phased parents
+setMethod("phases", c(x="ProgenyArray"),
+          function(x) {
+              # loads of data reshaping to do. Slot phased_parents contains
+              # nested lists:
+              #
+              # Parents
+              #  Chromosomes
+              #    Tiles
+              #      Phasing info
+              lapply(x@phased_parents, function(parent) {
+                  do.call(rbind, lapply(parent, function(chrom) {
+                      do.call(rbind, lapply(chrom, function(tile) {
+                          ll0 <- apply(tile$haplos_ll[[1]], 1, llratio)
+                          ll1 <- apply(tile$haplos_ll[[2]], 1, llratio)
+                          par_haps <- data.frame(h0=tile$haplos[, 1],
+                                                 h1=tile$haplos[, 2],
+                                                 h0ll=ll0, h1ll=ll1)
+                          # TODO -- what order are kids in? Should be guaranteed
+                          kids_clst <- apply(tile$cluster, 2, which.max)
+                          cbind(par_haps, tile$haplos[, cbind(kids_clst)])
+                      }))
+                  }))
+              })
           })
 
 
@@ -518,22 +548,6 @@ reshapeParentPhases <- function(x, tiles) {
     colnames(ll) <- paste("ll", colnames(ll), sep="_")
     cbind(haps, ll, lrt1, lrt2)
 }
-
-
-#' Output parent phasing results to tab-delimited file
-#'
-#' @param x a ProgenyArray object
-#' @param file filename for output
-#'
-#' @param verbose report status messages
-setMethod("saveParentPhases", c(x="ProgenyArray"),
-          function(x, file) {
-              if (length(x@phased_parents) == 0) stop("no phasing data present")
-              conn <- file(file)
-           
-
-
-})
 
 
 #

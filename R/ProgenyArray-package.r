@@ -6,11 +6,11 @@
 #' @import methods
 #' @import ggplot2
 #' @import GenomicRanges
+#' @import dplyr
 #' @importFrom reshape2 melt
 #' @importMethodsFrom Biobase samples
 #' @useDynLib ProgenyArray
 #' @importFrom Rcpp sourceCpp
-#' @importFrom dplyr group_by
-#' @importFrom dplyr summarise, n
+#' @importFrom MonoPoly monpol
 NULL
 
