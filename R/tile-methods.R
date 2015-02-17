@@ -41,7 +41,6 @@ approxGeneticMap <- function(genmap, degree=9) {
   # check if multicore available
   ncores <- getOption("mc.cores")
   lpfun <- if (!is.null(ncores) && ncores > 1) mclapply else lapply
-
   gm <- genmap
   chrs <- split(gm, gm$seqnames)
   if (!all(!sapply(chrs, function(x) is.unsorted(x$position) & is.unsorted(x$cumulative))))
@@ -52,8 +51,12 @@ approxGeneticMap <- function(genmap, degree=9) {
   origin <- data.frame(NA, NA, rep(0, n), NA, rep(0, n))
   colnames(origin) <- colnames(gm)
   approx <- lpfun(chrs, function(d) {
-      monpol(cumulative ~ position, data=rbind(origin, d), degree=degree)
+      fit <- tryCatch(MonoPoly::monpol(cumulative ~ position, algorithm="Hawkins",
+                                       data=rbind(origin, d), degree=degree),
+                      warning=function(x) { warning(x); NULL })
   })
+  if (any(sapply(approx, is.null)))
+   stop("error: fits from approxGeneticMap() not converged!")
   names(approx) <- unique(gm$seqnames)
   list(fits=approx, map=genmap)
 }
@@ -72,8 +75,9 @@ predictGeneticMap <- function(approx, ranges, as_df=TRUE) {
   # drop chroms not in gen map
   data <- data[data$seqnames %in% unique(approx$map$seqnames), ]
   data$seqnames <- droplevels(data$seqnames)
-  rang <- summarise(group_by(approx$map, seqnames),
-                    min=min(position), max=max(position))
+  rang <- approx$map %>% group_by(seqnames) %>%
+              summarise(min=min(position), max=max(position))
+
   pred <- unlist(lapply(split(data, data$seqnames), function(d) {
       chr <- as.character(d$seqnames[1])
       fit <- approx$fits[[chr]]
@@ -95,6 +99,9 @@ predictGeneticMap <- function(approx, ranges, as_df=TRUE) {
 }
 
 #' Function to inspect the Montonic Polynomial Regression Smoothing of Genetic Map
+#'
+#' @param tiles a PhasingTiles object
+#' @export 
 plotGeneticMap <- function(tiles) {
   genmap <- tiles@info$genetic_map
   approx <- tiles@info$smoothed_genetic_map
@@ -142,7 +149,8 @@ geneticTiles <- function(x, mapfile, length) {
         bins$tiles <- tiles
         bins$seqnames <- nam
         # find min and max physical positions for these genetic tiles
-        pos <- summarise(group_by(chr, tiles), start=min(position), end=max(position))
+        pos <- chr %>% group_by(tiles) %>%
+                   summarise(start=min(position), end=max(position))
         # match everything up, to add as columns to bins
         i <- match(bins$tiles, pos$tiles)
         bins$phys_start <- pos$start[i]

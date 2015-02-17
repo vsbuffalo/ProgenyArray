@@ -7,15 +7,15 @@ Description: This package contains classes for storing progeny array genotyping
 Depends:
     R (>= 3.1.0),
     GenomicRanges,
+    MonoPoly
 Imports:
     methods,
     Biobase,
     Rcpp,
+    magrittr,
     RcppEigen,
     reshape2,
-    ggplot2,
-    dplyr,
-    MonoPoly
+    ggplot2
 Suggests:
     testthat
 LinkingTo: Rcpp, RcppEigen

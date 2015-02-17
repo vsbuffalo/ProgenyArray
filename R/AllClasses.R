@@ -2,6 +2,22 @@
 # Copyright (C) 2014 Vince Buffalo <vsbuffalo@gmail.com>
 # Distributed under terms of the BSD license.
 
+#' A container for tiles used for phasing by imputation
+#'
+#' @slot type a character describing the type of tile (position, SNP, genetic)
+#' @slot width the width of each tile
+#' @slot tiles a list of lists, with the first list containing all chromosomes' tiles, and the second list containing the indices of the SNPs per tile
+#'  @slot info a list containing supplementary info about tiles, e.g genetic map and related smoothed versions
+#' @exportClass PhasingTiles
+setClass("PhasingTiles",
+         representation=representation(type="character",
+             width="integer",
+             tiles="list",
+             info="list"),             
+             prototype=prototype(type=character(),
+                 width=integer(),
+                 tiles=list(), info=list()))
+
 #' An S4 class that stores genotyping data from a progeny array design.
 #'
 #' @slot ranges a \code{GenomicRanges} object of loci
@@ -38,7 +54,7 @@ setClass("ProgenyArray",
              # list of lists of lists (parents, chroms, and tiles)
              phased_parents="list",
              phased_parents_metadata="list",
-             tiles="list", # list of lists (chroms and tiles)
+             tiles="PhasingTiles",
              ligation="integer"),
          prototype=prototype(ranges=GRanges(),
              ref=character(),
@@ -51,7 +67,7 @@ setClass("ProgenyArray",
              lodcutoff=NA_real_,
              phased_parents=list(),
              phased_parents_metadata=list(),
-             tiles=list(),
+             tiles=NULL,
              ligation=NA_integer_),
          validity=function(object) {
              if (nrow(object@progeny_geno) != nrow(object@parents_geno))
@@ -103,19 +119,3 @@ setClass("SimulatedProgenyArray",
              progeny_geno=matrix(),
              mothers=integer(),
              fathers=integer()))
-
-#' A container for tiles used for phasing by imputation
-#'
-#' @slot type a character describing the type of tile (position, SNP, genetic)
-#' @slot width the width of each tile
-#' @slot tiles a list of lists, with the first list containing all chromosomes' tiles, and the second list containing the indices of the SNPs per tile
-#'  @slot info a list containing supplementary info about tiles, e.g genetic map and related smoothed versions
-#' @exportClass PhasingTiles
-setClass("PhasingTiles",
-         representation=representation(type="character",
-             width="integer",
-             tiles="list",
-             info="list"),             
-             prototype=prototype(type=character(),
-                 width=integer(),
-                 tiles=list(), info=list()))

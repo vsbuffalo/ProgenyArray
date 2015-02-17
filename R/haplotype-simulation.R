@@ -26,27 +26,17 @@ haplotypes2NoisyGenotypes <- function(x, ehet, ehom, na_rate=0) {
 
 #' Simulate a half-sib family, fixed number of sites
 #'
-#' @export n size of halfsib family
-#' @export nsites number of sites
-#' @export rates selfing, halfsib, fullsib proportions
-#' @export nfullsib_fathers number of fathers contributing to fullsib families
-#' @export father_F proportion of fathers that are inbred
-#' @export mom_inbred whether mom is inbred
-#' @export ehet heterozygous error rate
-#' @export ehom homozygous error rate
+#' @param n size of halfsib family
+#' @param nsites number of sites
+#' @param rates selfing, halfsib, fullsib proportions
+#' @param nfullsib_fathers number of fathers contributing to fullsib families
+#' @param father_F proportion of fathers that are inbred
+#' @param mom_inbred whether mom is inbred
+#' @param ehet heterozygous error rate
+#' @param ehom homozygous error rate
 #'
 #' @return a list full of simulation data
-#'
-#' \enumerate{
-#'   \item \code{progeny} progeny genotypes (with error)
-#'   \item \code{mom} mother's haplotypes
-#'   \item \code{anno} dataframe containing haplotypes form each parent, fathers
-#'   \item \code{freqs} allele frequencies at loci
-#'   \item \code{hs_haplo} halfsib father's haplotypes
-#'   \item \code{fs_haplo} fullsib father's haplotypes
-#'   \item \code{hs_geno} halfsib father's genotypes (with error)
-#'   \item \code{fs_geno} fullsib father's genotypes (with error)
-#' }
+#' @export
 sibFamily <- function(nprogeny, nsites,
                       rates=c(selfing=0.5, halfsib=0.2, fullsib=0.3),
                       nfullsib_fathers=2, mom_inbred=FALSE,

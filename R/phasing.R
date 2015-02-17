@@ -433,14 +433,15 @@ phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
 setMethod("phaseParents", c(x="ProgenyArray"),
           function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8,
                    parallel=FALSE, verbose=TRUE) {
+              ncores <- getOption("mc.cores")
               lpfun <- if (!is.null(ncores) && ncores > 1) mclapply else lapply
-
+              x@tiles <- tiles # add tiles to ProgenyArray Object
               # first, note that some mothers may be inconsistent; that is
               # the inferred parent may not be a mother included. We use NA for
               # these.
               pars <- seq_len(ncol(parentGenotypes(x)))[1:2]
               x@phased_parents <- lpfun(pars, function(par) {
-                  chroms <- seqlevels(x@ranges)
+                  chroms <- names(x@tiles@tiles) # uses tile chromosome not slot ranges!
                   setNames(lpfun(chroms, function(chr) {
                       if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
                       phaseSibFamily(x, par, chr, tiles, ehet=ehet,
@@ -452,7 +453,46 @@ setMethod("phaseParents", c(x="ProgenyArray"),
               return(x)
           })
 
-llratio <- function(x) max(x)/min(x) # TODO think about this
+extractProgenyHaplotypes <- function(x, parent) {
+    do.call(rbind, lapply(x@phased_parents[[parent]], function(chrom) {
+        do.call(rbind, lapply(chrom, function(tile) {
+            clts <- apply(tile$cluster, 2, which.max)
+            tile$haplos[, cbind(clts)]
+        }))
+    }))
+}
+
+encodeHaplotype <- function(ref, alt, hap1, hap2) {
+    stopifnot(length(hap1) == length(hap2))
+    ifelse(is.na(hap1) | is.na(hap2), NA, paste(hap1, hap2, sep ="|"))
+}
+
+encodeHaplotypeAlleles <- function(ref, alt, hap1, hap2) {
+    stopifnot(length(ref) == length(alt))
+    stopifnot(length(hap1) == length(alt))
+    stopifnot(length(hap1) == length(hap2))
+    al_1 <- ifelse(hap1 == 0, ref, alt)
+    al_2 <- ifelse(hap2 == 0, ref, alt)
+    paste(al_1, al_2, sep ="|")
+}
+
+#' A function that takes a ProgenyArray object and a progeny ID, and creates
+#' creates this progeny's haplotypes by looking at the cluters inferred by EM.
+#' With these, this function grabs the corresponding haplotype from the parents
+#' to build the progeny's haplotype.
+getProgenyHaplotypesFromClusters <- function(x, progeny) {
+    prog <- x@parents[x@parents$progeny == progeny, ]
+    par1 <- extractProgenyHaplotypes(x, prog$parent_1)
+    par2 <- extractProgenyHaplotypes(x, prog$parent_2)
+    stopifnot(dim(par1) == dim(par2))
+    ref <- x@ref
+    alt <- x@alt
+    do.call(cbind, lapply(seq_len(ncol(par1)), function(i) {
+        encodeHaplotype(ref, alt, par1[, i], par2[, i])
+    }))
+}
+
+llratio <- function(x) max(x) - min(x) # TODO think about this
 
 #' Merge phasing data
 #'
@@ -466,19 +506,38 @@ setMethod("phases", c(x="ProgenyArray"),
               #  Chromosomes
               #    Tiles
               #      Phasing info
-              lapply(x@phased_parents, function(parent) {
-                  do.call(rbind, lapply(parent, function(chrom) {
-                      do.call(rbind, lapply(chrom, function(tile) {
-                          ll0 <- apply(tile$haplos_ll[[1]], 1, llratio)
-                          ll1 <- apply(tile$haplos_ll[[2]], 1, llratio)
-                          par_haps <- data.frame(h0=tile$haplos[, 1],
-                                                 h1=tile$haplos[, 2],
+              # This is a bit crufty; lots of cruft to deal with indices
+              # to grab names which should have passed earlier TODO
+              all_chroms <- names(x@tiles@tiles)
+              pars <- lapply(seq_along(x@phased_parents), function(parent_i) {
+                  parent <- x@phased_parents[[parent_i]]
+                  do.call(rbind, lapply(seq_along(parent), function(chrom_i) {
+                      chrom_name <- all_chroms[chrom_i]
+                      this_chrom <- parent[[chrom_i]]
+                      do.call(rbind, lapply(seq_along(this_chrom), function(tile_i) {
+                          tile <- x@tiles@tiles[[chrom_i]][[tile_i]]
+                          phases <- this_chrom[[tile_i]] # for this tile
+                          # calc LR
+                          pos <- start(x@ranges[seqnames(x@ranges) == chrom_name][tile])
+                          ll0 <- apply(phases$haplos_ll[[1]], 1, llratio)
+                          ll1 <- apply(phases$haplos_ll[[2]], 1, llratio)
+                          par_haps <- data.frame(h0=phases$haplos[, 1],
+                                                 h1=phases$haplos[, 2],
                                                  h0ll=ll0, h1ll=ll1)
-                          # TODO -- what order are kids in? Should be guaranteed
-                          kids_clst <- apply(tile$cluster, 2, which.max)
-                          cbind(par_haps, tile$haplos[, cbind(kids_clst)])
-                      }))
+                     }))
                   }))
+              })
+
+              # Create a dataframe of marker positions
+              ## pos <- do.call(rbind, lapply(names(x@tiles@tiles), function(chrom_name) {
+              ##     tile <- x@tiles@tiles[[chrom_name]]
+              ##     rngs <- x@ranges[seqnames(x@ranges) == chrom_name][tile]
+              ##     data.frame(chr=chrom_name, pos=start(rngs))
+              ## }))
+
+              # now, we need to reconstruct each kid's phase
+              lapply(x@parents$progeny, function(prog) {
+                  getProgenyHaplotypesFromClusters(pa, prog)
               })
           })
 
