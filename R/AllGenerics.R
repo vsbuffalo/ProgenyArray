@@ -156,7 +156,7 @@ setGeneric("phaseParents", function(x, tiles, ehet=0.8, ehom=0.1,
 
 #' Output all a simplified table of phasing data
 #'
-setGeneric("phases", function(x, file) {
+setGeneric("phases", function(x, include_ll=FALSE) {
     standardGeneric("phases")
 })
 

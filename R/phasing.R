@@ -1,5 +1,11 @@
 # phasing.R
 
+#
+# TODO: na_thresh no longer used
+#
+# Refactor ideas
+# - would be good to rework nested lapply()s into func
+
 whichmaxNA <- function(x) {
   # which.max that returns NA if any data is NA
   ifelse(any(is.na(x)), NA, which.max(x))
@@ -7,6 +13,7 @@ whichmaxNA <- function(x) {
 
 pruneWhichIndividuals <- function(geno, na_thresh) {
   # Return which individuals (columns) do not meet NA threshold
+  # NOTE: this is no longer used
   na_rates  <- colSums(!is.na(geno))/nrow(geno)
   which(na_rates > na_thresh)
 }
@@ -107,6 +114,7 @@ reshapeHapLL <- function(lls_haps) {
 emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
                               free_pi=FALSE, na_thresh=0.8, init=NULL, extra=FALSE,
                               max_iter=60L, eps=1e-9) {
+  # initialize EM pi and responsibility
   nloci <- length(pgeno)
   nind <- ncol(pgeno)
   pi <- c(0.5, 0.5)
@@ -114,7 +122,8 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
 
   # prune some individuals with high missingness, so we can get an initial
   # estimate of cluster responsibility
-  remove_inds <- pruneWhichIndividuals(pgeno, na_thresh)
+  # REMOVED; not needed anymore
+  #remove_inds <- pruneWhichIndividuals(pgeno, na_thresh)
 
   # initialize responsibilities
   if (is.null(init))
@@ -136,7 +145,7 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
   for (i in seq_len(max_iter)) {
     if (i > 1) {
       # get the total likehood given last MLE for all individuals' MLE alleles, for k in (1, 2)
-      # TODO: there is a VERY nasty bug in this the C++ func called below.
+      # earlier version useding C++ func; 
       #mlm1 <- max_ll_matrix(liks[[1]], liks[[2]], theta_mle[, 1])
       #mlm2 <- max_ll_matrix(liks[[2]], liks[[2]], theta_mle[, 2])
       mlm1 <- do.call(rbind, lapply(1:nrow(theta_mle), function(i) liks[[1L+theta_mle[i, 1]]][i,]))
@@ -192,6 +201,8 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
   }
   iter_ind_lls <- reshapeIndLL(lls_inds)
   iter_hap_lls <- reshapeHapLL(lls_haps)
+  stopifnot(ncol(resp) == ncol(pgeno)) # this should *always* be the case
+  colnames(resp) <- colnames(pgeno)
   out <- list(haplos=theta_mle, cluster=resp, pi=pi, niter=i-1, converged=converged,
               ll=rbind(ll1, ll2), init=a, haplos_lls=lls)
   if (extra)
@@ -383,6 +394,7 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
 
   # get progeny for the supplied parent (according to which parent it is) --
   pars <- parents(x)
+  # Grab the correct column (according to which_parent):
   d <- pars[pars[, as.character(which_parent)] == parent, ]
   other_parent <- setdiff(c("parent_1", "parent_2"), which_parent)
 
@@ -399,13 +411,14 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
 
   other_parents <- d[, other_parent] - 1L # since C++ is 0 indexed
   
-  # impute each window
+  # impute each window using the indices in a tile
   out <- lapply(tiles@tiles[[chrom]], function(loci) {
                 #message(sprintf("on loci number %d", min(loci)))
                 res <- emHaplotypeImpute(pgeno[loci, d$progeny],
                                          fgeno[loci, ],
                                          other_parents,
                                          freqs[loci], ehet, ehom, na_thresh=na_thresh)
+                # Store diagnostic information
                 res$nloci <- length(loci)
                 res$progeny_na <- sum(is.na(pgeno[loci, d$progeny]))/length(pgeno[loci, d$progeny])
                 res$progeny_na_per_loci <- rowMeans(is.na(pgeno[loci, d$progeny]))
@@ -439,66 +452,149 @@ setMethod("phaseParents", c(x="ProgenyArray"),
               # first, note that some mothers may be inconsistent; that is
               # the inferred parent may not be a mother included. We use NA for
               # these.
-              pars <- seq_len(ncol(parentGenotypes(x)))[1:2]
+              pars <- seq_len(ncol(parentGenotypes(x)))
               x@phased_parents <- lpfun(pars, function(par) {
-                  chroms <- names(x@tiles@tiles) # uses tile chromosome not slot ranges!
+                  chroms <- names(x@tiles@tiles)# uses tile chromosome not slot @ranges!
                   setNames(lpfun(chroms, function(chr) {
                       if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
                       phaseSibFamily(x, par, chr, tiles, ehet=ehet,
                                      ehom=ehom, na_thresh=na_thresh)
                   }), chroms)
               })
-              names(x@phased_parents) <- colnames(parentGenotypes(x))[1:2]
+              names(x@phased_parents) <- colnames(parentGenotypes(x))
               x@phased_parents_metadata <- phasingMetadata(tiles, ehet, ehom, na_thresh)
               return(x)
           })
 
-extractProgenyHaplotypes <- function(x, parent) {
+#' A function that gets the reference alleles used in the tiles.  This is an
+#' important difference from ref() which returns all reference alleles.
+tileRef <- function(x) {
+    # TODO; this is messy; a lot of this should be cleaned up with higher level
+    # funcs. In other words, this is fragile hacky code that bears the signature
+    # of Vance Bison, not Vince Buffalo.
+    # TODO: this could be moved to the tiling code;
+    stopifnot(length(x@ranges) == length(x@ref))
+    all_chroms <- names(x@tiles@tiles)
+    # ditch chromosomes not in tiles:
+    # have to convert to character beacuse stupid
+    # S4 Rle vec won't work in indexing later
+    seqnames_char <- as.character(seqnames(x@ranges))  
+    chrs_tiles <- seqnames_char %in% all_chroms
+    chrs <- seqnames_char[chrs_tiles]
+    refs <- x@ref[chrs_tiles]
+    stopifnot(length(x@tiles@tiles) == length(all_chroms))
+    unlist(Map(function(ref_chr, tile_chr) {
+        ref_chr[unlist(tile_chr)]
+    }, split(refs, chrs), x@tiles@tiles))
+}
+
+tileAlt <- function(x) {
+    # some as above for alt; TODO refactor
+    stopifnot(length(x@ranges) == length(x@alt))
+    all_chroms <- names(x@tiles@tiles)
+    # ditch chromosomes not in tiles:
+    seqnames_char <- as.character(seqnames(x@ranges))  
+    chrs_tiles <- seqnames_char %in% all_chroms
+    chrs <- seqnames_char[chrs_tiles]
+    alts <- x@alt[chrs_tiles]
+    stopifnot(length(x@tiles@tiles) == length(all_chroms))
+    unlist(Map(function(alt_chr, tile_chr) {
+        alt_chr[unlist(tile_chr)]
+    }, split(alts, chrs), x@tiles@tiles))
+}
+
+
+bindProgenyHaplotypes <- function(x, parent, progeny) {
+    # create a haplotype for a progeny given the parent's phased haplotypes
     do.call(rbind, lapply(x@phased_parents[[parent]], function(chrom) {
+        # loop through all chromosomes of one parent
         do.call(rbind, lapply(chrom, function(tile) {
-            clts <- apply(tile$cluster, 2, which.max)
-            tile$haplos[, cbind(clts)]
+            # loop through all tiles of one chromosome
+            # TODO this is quite inefficient
+            clts <- apply(tile$cluster, 2, which.max)[progeny]
+            out <- tile$haplos[, clts, drop=FALSE]
+            if (all(is.na(out))) browser()
+            out
         }))
     }))
 }
 
-encodeHaplotype <- function(ref, alt, hap1, hap2) {
-    stopifnot(length(hap1) == length(hap2))
-    ifelse(is.na(hap1) | is.na(hap2), NA, paste(hap1, hap2, sep ="|"))
+#' Extract all progeny haplotypes from all parents
+extractProgenyHaplotypes <- function(x) {
+    progeny_names <- colnames(progenyGenotypes(pa))
+    parent_names <- colnames(parentGenotypes(pa))
+    parent_1 <- parent_names[x@parents$parent_1]
+    parent_2 <- parent_names[x@parents$parent_2]
+    progeny <- progeny_names[x@parents$progeny]
+    Map(function(prog, p1, p2) {
+        par1 <- bindProgenyHaplotypes(pa, p1, prog)
+        par2 <- bindProgenyHaplotypes(pa, p2, prog)
+        browser()
+        stopifnot(dim(par1) == dim(par2))
+        if (length(x@ref) > 0 && length(x@alt) > 0) {
+            ref <- tileRef(x)
+            alt <- tileAlt(x)
+            stopifnot(length(ref) == nrow(par1) && length(alt) == nrow(par2))
+        } else {
+            ref <- NULL; alt <- NULL
+        }
+        do.call(cbind, lapply(seq_len(ncol(par1)), function(i) {
+            encodeHaplotype(par1[, i], par2[, i], ref, alt)
+        }))
+    }, progeny, parent_1, parent_2)
 }
 
-encodeHaplotypeAlleles <- function(ref, alt, hap1, hap2) {
-    stopifnot(length(ref) == length(alt))
-    stopifnot(length(hap1) == length(alt))
+
+
+# Take two haplotype vectors and merge them into strings like "0|1"
+encodeHaplotype <- function(hap1, hap2, ref=NULL, alt=NULL) {
     stopifnot(length(hap1) == length(hap2))
-    al_1 <- ifelse(hap1 == 0, ref, alt)
-    al_2 <- ifelse(hap2 == 0, ref, alt)
-    paste(al_1, al_2, sep ="|")
+    stopifnot(is.null(ref) == is.null(alt)) # both should be same
+    if (!is.null(ref) && !is.null(alt)) {
+        alleles <- cbind(ref, alt)
+        rrows <- 1:nrow(alleles)
+        # TODO check this
+        hap1 <- alleles[cbind(rrows, hap1 + 1L)]
+        hap2 <- alleles[cbind(rrows, hap2 + 1L)]
+    }
+    ifelse(is.na(hap1) | is.na(hap2), NA, paste(hap1, hap2, sep ="|"))
 }
 
 #' A function that takes a ProgenyArray object and a progeny ID, and creates
 #' creates this progeny's haplotypes by looking at the cluters inferred by EM.
 #' With these, this function grabs the corresponding haplotype from the parents
 #' to build the progeny's haplotype.
+#'
+#' Note that we use the names in the cluster matrix, since this is safer than
+#' using indexes.
 getProgenyHaplotypesFromClusters <- function(x, progeny) {
     prog <- x@parents[x@parents$progeny == progeny, ]
-    par1 <- extractProgenyHaplotypes(x, prog$parent_1)
-    par2 <- extractProgenyHaplotypes(x, prog$parent_2)
+    par1 <- extractProgenyHaplotypes(x, prog$parent_1, prog$progeny)
+    par2 <- extractProgenyHaplotypes(x, prog$parent_2, prog$progeny)
     stopifnot(dim(par1) == dim(par2))
-    ref <- x@ref
-    alt <- x@alt
+    if (length(x@ref) > 0 && length(x@alt) > 0) {
+        ref <- tileRef(x)
+        alt <- tileAlt(x)
+        stopifnot(length(ref) == nrow(par1) && length(alt) == nrow(par2))
+    } else {
+        ref <- NULL; alt <- NULL
+    }
     do.call(cbind, lapply(seq_len(ncol(par1)), function(i) {
-        encodeHaplotype(ref, alt, par1[, i], par2[, i])
+        encodeHaplotype(par1[, i], par2[, i], ref, alt)
     }))
 }
+
 
 llratio <- function(x) max(x) - min(x) # TODO think about this
 
 #' Merge phasing data
 #'
 #' @param x a ProgenyArray object with phased parents
+#' @param include_ll a logical indicating whether to include the haplotype log-likelihoods
 setMethod("phases", c(x="ProgenyArray"),
-          function(x) {
+          function(x, include_ll=FALSE) {
+              if (length(x@ref) == 0 || length(x@alt) == 0)
+                  warning("ref/alt not set; reporting haplotypes in 0|1 format.")
               # loads of data reshaping to do. Slot phased_parents contains
               # nested lists:
               #
@@ -508,6 +604,7 @@ setMethod("phases", c(x="ProgenyArray"),
               #      Phasing info
               # This is a bit crufty; lots of cruft to deal with indices
               # to grab names which should have passed earlier TODO
+              parent_names <- colnames(parentGenotypes(x))
               all_chroms <- names(x@tiles@tiles)
               pars <- lapply(seq_along(x@phased_parents), function(parent_i) {
                   parent <- x@phased_parents[[parent_i]]
@@ -517,29 +614,57 @@ setMethod("phases", c(x="ProgenyArray"),
                       do.call(rbind, lapply(seq_along(this_chrom), function(tile_i) {
                           tile <- x@tiles@tiles[[chrom_i]][[tile_i]]
                           phases <- this_chrom[[tile_i]] # for this tile
-                          # calc LR
-                          pos <- start(x@ranges[seqnames(x@ranges) == chrom_name][tile])
-                          ll0 <- apply(phases$haplos_ll[[1]], 1, llratio)
-                          ll1 <- apply(phases$haplos_ll[[2]], 1, llratio)
-                          par_haps <- data.frame(h0=phases$haplos[, 1],
-                                                 h1=phases$haplos[, 2],
-                                                 h0ll=ll0, h1ll=ll1)
+                          par_haps <- encodeHaplotype(phases$haplos[, 1],
+                                                      phases$haplos[, 2],
+                                                      x@ref[tile], x@alt[tile])
+                          if (include_ll) {
+                              # TODO
+                              ll0 <- apply(phases$haplos_ll[[1]], 1, llratio)
+                              ll1 <- apply(phases$haplos_ll[[2]], 1, llratio)
+                          }
+                          out <- cbind(par_haps)
+                          colnames(out) <- parent_names[parent_i]
+                          out
                      }))
                   }))
               })
 
-              # Create a dataframe of marker positions
-              ## pos <- do.call(rbind, lapply(names(x@tiles@tiles), function(chrom_name) {
-              ##     tile <- x@tiles@tiles[[chrom_name]]
-              ##     rngs <- x@ranges[seqnames(x@ranges) == chrom_name][tile]
-              ##     data.frame(chr=chrom_name, pos=start(rngs))
-              ## }))
+              if (include_ll) {
+                  ll <- lapply(seq_along(x@phased_parents), function(parent_i) {
+                     parent <- x@phased_parents[[parent_i]]
+                     do.call(rbind, lapply(seq_along(parent), function(chrom_i) {
+                         chrom_name <- all_chroms[chrom_i]
+                         this_chrom <- parent[[chrom_i]]
+                         do.call(rbind, lapply(seq_along(this_chrom), function(tile_i) {
+                             tile <- x@tiles@tiles[[chrom_i]][[tile_i]]
+                             phases <- this_chrom[[tile_i]] # for this tile
+                             ll0 <- apply(phases$haplos_ll[[1]], 1, llratio)
+                             ll1 <- apply(phases$haplos_ll[[2]], 1, llratio)
+                             pn <- paste(c("ll0", "ll1"),
+                                         parent_names[parent_i], sep="_")
+                             out <- cbind(ll0, ll1)
+                             colnames(out) <- pn
+                             out
+                         }))
+                     }))
+                 })
+              }
 
               # now, we need to reconstruct each kid's phase
-              lapply(x@parents$progeny, function(prog) {
-                  getProgenyHaplotypesFromClusters(pa, prog)
-              })
+              prog <- extractProgenyHaplotypes(pa)
+              # get positions from tiles, bind everything together.
+              pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
+              pos <- setNames(pos, c("chr", "position"))
+              prog_binded <- do.call(cbind, prog)
+              colnames(prog_binded) <- colnames(progenyGenotypes(x))
+              cbind(pos, do.call(cbind, pars), prog_binded)
           })
+
+writePhases <- function(x, file) {
+    if (regexpr(".*\\.gz", file) != -1)
+        file <- gzfile(file)
+    write.table(x, file, sep="\t", col.names=TRUE, row.names=FALSE, quote=FALSE)
+}
 
 
 #' A diagnostic plot of haplotype imputation of simulated data
@@ -608,86 +733,3 @@ reshapeParentPhases <- function(x, tiles) {
     cbind(haps, ll, lrt1, lrt2)
 }
 
-
-#
-#
-#
-#haploImputeWindow <- function(geno, parent_geno, fathers, freqs,
-#                              na_thresh=0.6, ehet=0.8, ehom=0.1) {
-#  # haplotype imputation, first by IBS clustering into two shared
-#  # haplotype groups, and then ML imputation of these group's
-#  # alleles
-#  predict <- FALSE # feature not added yet
-#  stopifnot(nrow(geno) == nrow(parent_geno))
-#
-#  # prune individuals with high missingness
-#  remove_inds <- pruneWhichIndividuals(geno, na_thresh)
-#  geno_na <- na.omit(geno[, -remove_inds])
-#  if (nrow(geno_na) < 1) {
-#    warning("cannot run k-means on this window: all loci contian NA values")
-#    browser()
-#    return(NULL)
-#  }
-#  nremoved <- length(na.action(geno_na))
-#  if (ncol(geno_na) < 1) {
-#    # no individuals available to cluster (all NA); return NA likelihood
-#    empty <- list(matrix(NA, nrow=nrow(geno), ncol=2),
-#                  matrix(NA, nrow=nrow(geno), ncol=2))
-#    return(list(ll=empty, haps=NA, pruned=remove_inds))
-#  }
-#  # IBS cluter individuals into two groups, by shared haplotype
-#  km <- cclust(t(geno_na), 2)
-#  clusters <- data.frame(ind=1:ncol(geno), hap=NA)
-#  clusters$hap[-remove_inds] <- km$cluster # for complete individuals
-#  if (predict) {
-#    # Note: this feature not stable yet
-#    # predict haplotype of missing individuals
-#    # for some reason, the number of columns cclust uses changes.
-#    # so we extract these from km
-#    unclustered_genos <- na.exclude(t(geno)[remove_inds, colnames(km$centers)])
-#    if (nrow(unclustered_genos) > 0) {
-#      fit_clust <- predict(km, unclustered_genos)
-#      clusters$hap[remove_inds] <- fit_clust$cluster
-#    }
-#  }
-#  # impute alleles for both (1, 2) shared haplotypes
-#  hap_geno <- list(geno[, clusters$hap == 1], geno[, clusters$hap == 2])
-#  out <- lapply(1:2, function(which_hap) {
-#                # iterate haplotype imputation for each cluster
-#                hap_geno <- geno[, which(clusters$hap == which_hap), drop=FALSE]
-#                hap_fathers <- fathers[which(clusters$hap == which_hap)]
-#                ll <- lapply(1:nrow(hap_geno), function(i) {
-#                             allele_ll(hap_geno[i, ], ehet, ehom, freqs[i],
-#                                       parent_geno[cbind(i, hap_fathers)])
-#               })
-#               return(do.call(rbind, ll))
-#  })
-#  return(list(ll=out, haps=clusters$hap, pruned=remove_inds))
-#}
-#
-#whichmaxNA <- function(x) {
-#  # which.max that returns NA if all data is NA
-#  ifelse(any(is.na(x)), NA, which.max(x))
-#}
-#
-#reshapeResults <- function(x) {
-#  # Munging function, used to clean/restructure data from phaseSibFamily
-#  ll <- lapply(x, function(res_per_tile) {
-#         llscores <- res_per_tile[[1]]
-#         hap1 <- apply(llscores[[1]], 1, whichmaxNA)-1L
-#         hap2 <- apply(llscores[[2]], 1, whichmaxNA)-1L
-#         data.frame(hap1=hap1, hap2=hap2,
-#                    ll1_0=llscores[[1]][, 1],
-#                    ll1_1=llscores[[1]][, 2],
-#                    ll2_0=llscores[[2]][, 2],
-#                    ll2_1=llscores[[2]][, 2])
-#  })
-#  haps <- lapply(x, function(res_per_tile) {
-#                 res_per_tile[[2]]
-#  })
-#  removed <- sapply(x, function(res_per_tile) {
-#                 res_per_tile[[3]]
-#  })
-#  list(ll=ll, haps=haps, removed_inds=removed)
-#}
-#

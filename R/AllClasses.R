@@ -67,7 +67,7 @@ setClass("ProgenyArray",
              lodcutoff=NA_real_,
              phased_parents=list(),
              phased_parents_metadata=list(),
-             tiles=NULL,
+             tiles=new('PhasingTiles'),
              ligation=NA_integer_),
          validity=function(object) {
              if (nrow(object@progeny_geno) != nrow(object@parents_geno))
