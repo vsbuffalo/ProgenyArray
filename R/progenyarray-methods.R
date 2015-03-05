@@ -126,8 +126,14 @@ setMethod("progenyGenotypes",
 #' @export
 setMethod("parents",
           c(x="ProgenyArray"),
-          function(x) {
-            return(x@parents)
+          function(x, use_names=FALSE) {
+              if (!use_names)
+                  return(x@parents)
+              tmp <- x@parents
+              tmp$progeny <- colnames(progenyGenotypes(x))[tmp$progeny]
+              tmp$parent_1 <- colnames(parentGenotypes(x))[tmp$parent_1]
+              tmp$parent_2 <- colnames(parentGenotypes(x))[tmp$parent_2]
+              tmp
           })
 
 #' Method to check if individual is selfed

@@ -41,7 +41,7 @@ setGeneric("suppliedMothers", function(x) {
 
 #' Accessor for parents (returning indices or names)
 #'
-setGeneric("parents", function(x, names=TRUE) {
+setGeneric("parents", function(x, use_names=TRUE) {
            standardGeneric("parents")
              })
 
@@ -156,7 +156,7 @@ setGeneric("phaseParents", function(x, tiles, ehet=0.8, ehom=0.1,
 
 #' Output all a simplified table of phasing data
 #'
-setGeneric("phases", function(x, include_ll=FALSE) {
+setGeneric("phases", function(x, include_ll=FALSE, verbose=TRUE) {
     standardGeneric("phases")
 })
 
