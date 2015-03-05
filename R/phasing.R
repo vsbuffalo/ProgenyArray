@@ -356,14 +356,19 @@ tileAlt <- function(x) {
 bindProgenyHaplotypes <- function(x, parent, progeny) {
     # create a haplotype for a progeny given the parent's phased haplotypes
     # unlist; not sapply; simplify2array screw everything up
-    unlist(lapply(x@phased_parents[[parent]], function(chrom) {
-        # loop through all chromosomes of one parent
-        unlist(lapply(chrom, function(tile) {
+    getProgenyHaplotypeType <- function(tile) {
             # loop through all tiles of one chromosome
+            # grabbing the tile for the appropriate progeny
+            # moved outside of lapply() for speed
             clts <- apply(tile$cluster, 2, which.max)[progeny]
             tile$haplos[, clts, drop=FALSE]
-        }))
+    }
+    out <- do.call(rbind, lapply(x@phased_parents[[parent]], function(chrom) {
+        # loop through all chromosomes of one parent
+        do.call(rbind, lapply(chrom, getProgenyHaplotypeType))
     }))
+    stopifnot(ncol(out) == 1)
+    return(out[, 1]) # faster than unlist()
 }
 
 #' Extract all progeny haplotypes from all parents
@@ -383,16 +388,14 @@ extractProgenyHaplotypes <- function(x) {
  
     ncores <- getOption("mc.cores")
     mapfun <- if (!is.null(ncores) && ncores > 1) mcMap else Map
-    out <- mapfun(function(prog, p1, p2) {
+    setNames(mapfun(function(prog, p1, p2) {
         par1 <- bindProgenyHaplotypes(pa, p1, prog)
         par2 <- bindProgenyHaplotypes(pa, p2, prog)
         stopifnot(dim(par1) == dim(par2))
         stopifnot(nrow(par1) == length(refs))
         stopifnot(nrow(par2) == length(refs))
         encodeHaplotype(par1, par2, refs, alts)
-    }, progeny, parent_1, parent_2)
-    names(out) <- progeny
-    out
+    }, progeny, parent_1, parent_2), progeny)
 }
 
 # Take two haplotype vectors and merge them into strings like "0|1"
