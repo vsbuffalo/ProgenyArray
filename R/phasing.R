@@ -288,11 +288,9 @@ phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
 #' @param ehet heterozygous error rate
 #' @param ehom homozygous error rate
 #' @param na_thresh how much missingness to tolerate before pruning individual
-#' @param parallel whether to run across multiple cores (use option mc.cores to set number of cores)
 #' @param verbose report status messages
 setMethod("phaseParents", c(x="ProgenyArray"),
-          function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8,
-                   parallel=FALSE, verbose=TRUE) {
+          function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, verbose=TRUE) {
               ncores <- getOption("mc.cores")
               lpfun <- if (!is.null(ncores) && ncores > 1) mclapply else lapply
               x@tiles <- tiles # add tiles to ProgenyArray Object
