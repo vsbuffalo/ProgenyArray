@@ -17,7 +17,6 @@ using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::RowVector3d;
 
-// TODO HERE const
 RowVector3d HWWithError(double freq, Matrix3d error, bool use_log) {
 
   RowVector3d hwprobs(pow(1-freq, 2.), 2*freq*(1-freq), pow(freq, 2.));
@@ -139,7 +138,6 @@ List inferParents(IntegerMatrix progeny, IntegerMatrix parents, NumericVector
   tmprobs = MendelianTransmissionMatrix();
   genofreqs = HWLociMatrix(freqs, false);
   genofreqs_error = HWLociMatrixWithError(freqs, errors, true);
-  // TODOFIX
   for (int p = 0; p < nprogeny; p++) {
     checkUserInterrupt();
     IntegerMatrix::Column kid = progeny(_, p);
@@ -152,5 +150,3 @@ List inferParents(IntegerMatrix progeny, IntegerMatrix parents, NumericVector
     std::cout << std::endl;
   return calls;
 }
-
-
