@@ -260,8 +260,8 @@ phaseSibFamily <- function(x, parent, chrom, tiles,
   # impute each window using the indices in a tile
   out <- lapply(tiles@tiles[[chrom]], function(loci) {
                 #message(sprintf("on loci number %d", min(loci)))
-                res <- emHaplotypeImpute(pgeno[loci, prog_i],
-                                         fgeno[loci, ],
+                res <- emHaplotypeImpute(pgeno[loci, prog_i, drop=FALSE],
+                                         fgeno[loci, , drop=FALSE],
                                          other_parents,
                                          freqs[loci], ehet, ehom, na_thresh=na_thresh)
                 stopifnot(ncol(res$cluster) == length(other_parents))
