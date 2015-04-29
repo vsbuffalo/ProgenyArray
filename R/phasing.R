@@ -174,7 +174,7 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
     ll_weighted <- lapply(1L:2L, function(k) {
                           lapply(liks, function(lik) {
                                  # loops over likelihoods for an allele in (0, 1)
-                                 sweep(log(lik), MARGIN=2, STATS=resp[k,], FUN=`*`)
+                                 sweep(log(lik), MARGIN=2, STATS=resp[k, , drop=FALSE], FUN=`*`)
                           })
     })
     # log likelihoods of each loci's allele, for both haplotypes k in (1, 2)
@@ -198,6 +198,23 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
       out <- c(out, list(iter_theta=thetas, iter_ind_lls=iter_ind_lls,
                          iter_hap_lls=iter_hap_lls))
   out
+}
+
+#' Create a sibling family for a single parent.
+#'
+#' @param x a ProgenyArray object
+#' @param parent the parent to bring the half sib family
+sibFamily <- function(x, parent) {
+  pars <- parents(x)
+  # This builds a full-sib family 
+  tmp <- pars[pars$parent_1 == parent | pars$parent_2 == parent,
+              c("progeny", "parent_1", "parent_2")]
+  prog_i <- tmp$progeny
+  other_parents <- apply(tmp[, -1], 1, function(x) {
+      if (x[1] == x[2]) return(parent) # selfed ind; return any parent
+      setdiff(x, parent)
+    })
+  data.frame(focal_parent=parent, other_parent=other_parents, progeny=prog_i)
 }
 
 #' Phase Sibling Family by Haplotype Imputation
