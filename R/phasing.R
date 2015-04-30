@@ -106,6 +106,8 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
   # initialize EM pi and responsibility
   nloci <- length(pgeno)
   nind <- ncol(pgeno)
+  if (nloci == 0 || nind == 0)
+    stop(sprintf("emHaplotypeImpute(): nind or nloci = 0"))
   pi <- c(0.5, 0.5)
   resp <- matrix(0, nrow=nind, ncol=2)
 
@@ -123,7 +125,8 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
 
   # calculate likelihoods for each shared parent allele being (0, 1) ONCE for
   # all individuals, progeny
-  liks <- geno_ll(pgeno, fgeno, other_parents, freqs, ehet, ehom)
+  # NOTE: we decrement other_parents since C++ is 0 indexed.
+  liks <- geno_ll(pgeno, fgeno, other_parents-1L, freqs, ehet, ehom)
 
   thetas <- list()
   lls_inds <- list(list(), list())
@@ -204,11 +207,17 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
 #'
 #' @param x a ProgenyArray object
 #' @param parent the parent to bring the half sib family
+#'
+#' @export
 sibFamily <- function(x, parent) {
   pars <- parents(x)
   # This builds a full-sib family 
   tmp <- pars[pars$parent_1 == parent | pars$parent_2 == parent,
               c("progeny", "parent_1", "parent_2")]
+  if (nrow(tmp) == 0) {
+    warning(sprintf("sibFamily(): parent '%d' has no offspring", parent))
+    return(NULL)
+  }
   prog_i <- tmp$progeny
   other_parents <- apply(tmp[, -1], 1, function(x) {
       if (x[1] == x[2]) return(parent) # selfed ind; return any parent
@@ -217,75 +226,63 @@ sibFamily <- function(x, parent) {
   data.frame(focal_parent=parent, other_parent=other_parents, progeny=prog_i)
 }
 
+#' Get all sibling families for a ProgenyArray object
+allSibFamilies <- function(x) {
+  pars <- seq_len(ncol(parentGenotypes(x)))
+  parnames <- colnames(parentGenotypes(x))
+  setNames(lapply(pars, function(p) sibFamily(x, p)), parnames)
+}
+
+#' Filter sibling families by minimum number of offspring
+filterSibFamilies <- function(sibfamilies, min_child) {
+  # parent_names is used for friendlier messages
+  msg <- "filterSibFamilies(): parent %d ('%s') has fewer than %d offspring (%d); not including in phasing/imputation."
+  sibfams <- Map(function(x, n) {
+      if (is.null(x)) return(NULL)
+      if (nrow(x) < min_child) {
+        warning(sprintf(msg, x$focal_parent[1], n, min_child, nrow(x)))
+        return(NULL)
+      }
+      return(x)
+    }, sibfamilies, names(sibfamilies))
+}
+
 #' Phase Sibling Family by Haplotype Imputation
 
 #'
 #' @param x a ProgenyArray object
-#' @param parent parent for which to impute haplotypes
+#' @param sibfam a dataframe from \code{sibFamily()}
 #' @param chrom which chromosome to use
 #' @param tiles a PhasingTiles object
 #' @param ehet heterozygous error rate
 #' @param ehom homozygous error rate
 #' @param na_thresh missingness threshold to remove individual from clustering
-phaseSibFamily <- function(x, parent, chrom, tiles,
+phaseSibFamily <- function(x, sibfam, chrom, tiles,
                            ehet=0.8, ehom=0.1,
                            na_thresh=0.8) {
 
-  which_parent <- "both" ## Other options used just for testing.
   if (!(chrom %in% seqlevels(x@ranges)))
     stop(sprintf("chromosome '%s' not in loci", as.character(chrom)))
 
-  # need to implement a which_parent = both.
-  # This builds the true full-sib family, not just sib-family conditioning on
-  # one arbitrary parent.
-
-  pars <- parents(x)
   # get genotype data for this chromosome
   this_chrom <- as.logical(seqnames(x@ranges) == chrom)
   pgeno <- progenyGenotypes(x, seqname=chrom)
   fgeno <- parentGenotypes(x, seqname=chrom)
   stopifnot(nrow(pgeno) == nrow(fgeno))
   freqs <- freqs(x)[this_chrom]
- 
-  if (which_parent == "both") {
-      # This builds a full-sib family 
-      tmp <- pars[pars$parent_1 == parent | pars$parent_2 == parent,
-                  c("progeny", "parent_1", "parent_2")]
-      prog_i <- tmp$progeny
-      other_parents <- apply(tmp[, -1], 1, function(x) {
-          if (x[1] == x[2]) return(parent) # selfed ind; return any parent
-          setdiff(x, parent)
-      })
-      other_parents <- other_parents - 1L # since C++ is 0 indexed
-  } else {
-      # Only phase progeny where when this supplied parent is `which_parent` in
-      # the parents(x) dataframe. This was an earlier approach, mostly used for
-      # testing so we could compare the phases lookning at HS fams from
-      # mother/father.
 
-      # Grab the correct column (according to which_parent):
-      d <- pars[pars[, as.character(which_parent)] == parent, ]
-      other_parent <- setdiff(c("parent_1", "parent_2"), which_parent)
-      # check that all other parents are within bounds parent genotype matrix
-      stopifnot(d[, other_parent] %in% 1:ncol(fgeno))
-    
-      # indices of fathers passed to EM routine
-      other_parents <- d[, other_parent] - 1L # since C++ is 0 indexed
-      prog_i <- d$progeny
-  }
-  
   # impute each window using the indices in a tile
   out <- lapply(tiles@tiles[[chrom]], function(loci) {
                 #message(sprintf("on loci number %d", min(loci)))
-                res <- emHaplotypeImpute(pgeno[loci, prog_i, drop=FALSE],
+                res <- emHaplotypeImpute(pgeno[loci, sibfam$progeny, drop=FALSE],
                                          fgeno[loci, , drop=FALSE],
-                                         other_parents,
+                                         sibfam$other_parents,
                                          freqs[loci], ehet, ehom, na_thresh=na_thresh)
                 stopifnot(ncol(res$cluster) == length(other_parents))
                 # Store diagnostic information
                 res$nloci <- length(loci)
-                res$progeny_na <- sum(is.na(pgeno[loci, prog_i]))/length(pgeno[loci, prog_i])
-                res$progeny_na_per_loci <- rowMeans(is.na(pgeno[loci, prog_i]))
+                res$progeny_na <- sum(is.na(pgeno[loci, sibfam$progeny]))/length(pgeno[loci, sibfam$progeny])
+                res$progeny_na_per_loci <- rowMeans(is.na(pgeno[loci, sibfam$progeny]))
                 res$father_na <- sum(is.na(fgeno[loci, ]))/length(fgeno[loci, ])
                 res$completeness <- sum(apply(!is.na(res$haplos), 1, all))/nrow(res$haplos)
                 return(res)
@@ -305,28 +302,37 @@ phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
 #' @param ehet heterozygous error rate
 #' @param ehom homozygous error rate
 #' @param na_thresh how much missingness to tolerate before pruning individual
+#' @param min_child minimum number of children to include a parent for phasing
 #' @param verbose report status messages
 setMethod("phaseParents", c(x="ProgenyArray"),
-          function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, verbose=TRUE) {
+          function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE) {
               ncores <- getOption("mc.cores")
-              lpfun <- if (!is.null(ncores) && ncores > 1) mclapply else lapply
+              lpfun <- if (!is.null(ncores) && ncores > 1) mcMap else Map
               x@tiles <- tiles # add tiles to ProgenyArray Object
               # first, note that some mothers may be inconsistent; that is
               # the inferred parent may not be a mother included. We use NA for
               # these.
-              pars <- seq_len(ncol(parentGenotypes(x)))
-              x@phased_parents <- lpfun(pars, function(par) {
+
+              # create sibling families, for all parents; filter out parents
+              # that don't have sufficient children for phasing/imputation
+              sibfams <- filterSibFamilies(allSibFamilies(x), min_child)
+
+              x@phased_parents <- lpfun(function(sibfam, parname) {
+                  if (is.null(sibfam)) {
+                    warning(sprintf("phaseParents(): skipping parent '%s'; no sib family data"), parname)
+                    return(NULL) # nothing to phase, either no progeny or too few
+                  }
                   chroms <- names(x@tiles@tiles)# uses tile chromosome not slot @ranges!
                   setNames(lpfun(chroms, function(chr) {
                       if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
-                      phaseSibFamily(x, par, chr, tiles, ehet=ehet,
+                      phaseSibFamily(x, sibfam, chr, tiles, ehet=ehet,
                                      ehom=ehom, na_thresh=na_thresh)
                   }), chroms)
               })
               names(x@phased_parents) <- colnames(parentGenotypes(x))
               x@phased_parents_metadata <- phasingMetadata(tiles, ehet, ehom, na_thresh)
               return(x)
-          })
+          }, sibfams, names(sibfams))
 
 #' A function that gets the reference alleles used in the tiles.  This is an
 #' important difference from ref() which returns all reference alleles.
@@ -387,8 +393,11 @@ bindProgenyHaplotypes <- function(x, parent, progeny) {
 }
 
 #' Extract all progeny haplotypes from all parents
-extractProgenyHaplotypes <- function(x) {
-    pars <- parents(pa, use_names=TRUE)
+extractProgenyHaplotypes <- function(x, included_parents) {
+    pars <- parents(x, use_names=TRUE)
+    # only keep those parents with full sib fams
+    kp <- pars$parent_1 %in% included_parents & pars$parent_2 %in% included_parents
+    pars <- pars[kp, ]
     parent_1 <- pars$parent_1
     parent_2 <- pars$parent_2
     progeny <- pars$progeny
@@ -456,12 +465,13 @@ setMethod("phases", c(x="ProgenyArray"),
               parent_names <- colnames(parentGenotypes(x))
               all_chroms <- names(x@tiles@tiles)
               # get alleles at tile sites
-              alts <- tileAlt(pa)
-              refs <- tileRef(pa)
+              alts <- tileAlt(x)
+              refs <- tileRef(x)
               ncores <- getOption("mc.cores")
               lpfun <- if (!is.null(ncores) && ncores > 1) mclapply else lapply
               pars <- lpfun(seq_along(x@phased_parents), function(parent_i) {
                   parent <- x@phased_parents[[parent_i]]
+                  if (is.null(parent)) return(NULL) # didn't phase this parent for some reason
                   do.call(rbind, lapply(seq_along(parent), function(chrom_i) {
                       chrom_name <- all_chroms[chrom_i]
                       this_chrom <- parent[[chrom_i]]
@@ -485,6 +495,7 @@ setMethod("phases", c(x="ProgenyArray"),
                   # TODO: could be cleaned up with parent/chrom/tile iterator
                   ll <- lpfun(seq_along(x@phased_parents), function(parent_i) {
                      parent <- x@phased_parents[[parent_i]]
+                     if (is.null(parent)) return(NULL) # didn't phase this parent for some reason
                      do.call(rbind, lapply(seq_along(parent), function(chrom_i) {
                          chrom_name <- all_chroms[chrom_i]
                          this_chrom <- parent[[chrom_i]]
@@ -506,7 +517,7 @@ setMethod("phases", c(x="ProgenyArray"),
 
               # now, we need to reconstruct each kid's phase
               vmessage("extracting all progeny haplotypes... ")
-              prog <- extractProgenyHaplotypes(pa)
+              prog <- extractProgenyHaplotypes(x)
               vmessage("done.\n")
               # get positions from tiles, bind everything together.
               pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
