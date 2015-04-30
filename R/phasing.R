@@ -237,7 +237,7 @@ allSibFamilies <- function(x) {
 filterSibFamilies <- function(sibfamilies, min_child) {
   # parent_names is used for friendlier messages
   msg <- "filterSibFamilies(): parent %d ('%s') has fewer than %d offspring (%d); not including in phasing/imputation."
-  sibfams <- Map(function(x, n) {
+  filtered_sibfams <- Map(function(x, n) {
       if (is.null(x)) return(NULL)
       if (nrow(x) < min_child) {
         warning(sprintf(msg, x$focal_parent[1], n, min_child, nrow(x)))
@@ -245,6 +245,7 @@ filterSibFamilies <- function(sibfamilies, min_child) {
       }
       return(x)
     }, sibfamilies, names(sibfamilies))
+  return(filtered_sibfams)
 }
 
 #' Phase Sibling Family by Haplotype Imputation
@@ -304,35 +305,41 @@ phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
 #' @param na_thresh how much missingness to tolerate before pruning individual
 #' @param min_child minimum number of children to include a parent for phasing
 #' @param verbose report status messages
+#'
+#' @export
 setMethod("phaseParents", c(x="ProgenyArray"),
-          function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE) {
-              ncores <- getOption("mc.cores")
-              lpfun <- if (!is.null(ncores) && ncores > 1) mcMap else Map
-              x@tiles <- tiles # add tiles to ProgenyArray Object
-              # first, note that some mothers may be inconsistent; that is
-              # the inferred parent may not be a mother included. We use NA for
-              # these.
+function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE) {
 
-              # create sibling families, for all parents; filter out parents
-              # that don't have sufficient children for phasing/imputation
-              sibfams <- filterSibFamilies(allSibFamilies(x), min_child)
+  ncores <- getOption("mc.cores")
+  lpfun <- if (!is.null(ncores) && ncores > 1) mcMap else Map
+  x@tiles <- tiles # add tiles to ProgenyArray Object
+  # first, note that some mothers may be inconsistent; that is
+  # the inferred parent may not be a mother included. We use NA for
+  # these.
+  
+  # create sibling families, for all parents; filter out parents
+  # that don't have sufficient children for phasing/imputation
+  sibfams <- filterSibFamilies(allSibFamilies(x), min_child)
 
-              x@phased_parents <- lpfun(function(sibfam, parname) {
-                  if (is.null(sibfam)) {
-                    warning(sprintf("phaseParents(): skipping parent '%s'; no sib family data"), parname)
-                    return(NULL) # nothing to phase, either no progeny or too few
-                  }
-                  chroms <- names(x@tiles@tiles)# uses tile chromosome not slot @ranges!
-                  setNames(lpfun(chroms, function(chr) {
-                      if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
-                      phaseSibFamily(x, sibfam, chr, tiles, ehet=ehet,
-                                     ehom=ehom, na_thresh=na_thresh)
-                  }), chroms)
-              })
-              names(x@phased_parents) <- colnames(parentGenotypes(x))
-              x@phased_parents_metadata <- phasingMetadata(tiles, ehet, ehom, na_thresh)
-              return(x)
-          }, sibfams, names(sibfams))
+  phaseFun <- function(sibfam, parname) {
+    if (is.null(sibfam)) {
+      warning(sprintf("phaseParents(): skipping parent '%s'; no sib family data"), parname)
+      return(NULL) # nothing to phase, either no progeny or too few
+    }
+    chroms <- names(x@tiles@tiles)# uses tile chromosome not slot @ranges!
+    setNames(lpfun(chroms, function(chr) {
+                     if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
+                     phaseSibFamily(x, sibfam, chr, tiles, ehet=ehet,
+                                    ehom=ehom, na_thresh=na_thresh)
+                   }), chroms)
+  }
+  
+  x@phased_parents <- lpfun(phaseFun, sibfams, names(sibfams))
+
+  names(x@phased_parents) <- colnames(parentGenotypes(x))
+  x@phased_parents_metadata <- phasingMetadata(tiles, ehet, ehom, na_thresh)
+  return(x)
+})
 
 #' A function that gets the reference alleles used in the tiles.  This is an
 #' important difference from ref() which returns all reference alleles.

@@ -5,7 +5,7 @@
 \alias{parents,ProgenyArray-method}
 \title{Accessor for parents \code{data.frame} in a ProgenyArray object}
 \usage{
-\S4method{parents}{ProgenyArray}(x)
+\S4method{parents}{ProgenyArray}(x, use_names = FALSE)
 }
 \arguments{
 \item{x}{a ProgenyArray object}

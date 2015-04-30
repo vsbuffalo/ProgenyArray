@@ -3,18 +3,14 @@
 \docType{methods}
 \name{progenyNames,ProgenyArray-method}
 \alias{progenyNames,ProgenyArray-method}
-\title{Accessor for alterate alleles from a ProgenyArray object}
+\title{Return progeny sample names}
 \usage{
 \S4method{progenyNames}{ProgenyArray}(x)
 }
 \arguments{
 \item{x}{a ProgenyArray object}
-
-\item{x}{a ProgenyArray object}
-
-\item{x}{a ProgenyArray object}
 }
 \description{
-Accessor for alterate alleles from a ProgenyArray object
+Return progeny sample names
 }
 

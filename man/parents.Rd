@@ -4,7 +4,7 @@
 \alias{parents}
 \title{Accessor for parents (returning indices or names)}
 \usage{
-parents(x, names = TRUE)
+parents(x, use_names = TRUE)
 }
 \description{
 Accessor for parents (returning indices or names)
