@@ -193,7 +193,7 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
   }
   iter_ind_lls <- reshapeIndLL(lls_inds)
   iter_hap_lls <- reshapeHapLL(lls_haps)
-  stopifnot(ncol(resp) == ncol(pgeno)) # this should *always* be the case
+  stopifnot(ncol(resp) == length(other_parents)) # this should *always* be the case
   colnames(resp) <- colnames(pgeno)
   out <- list(haplos=theta_mle, cluster=resp, pi=pi, niter=i-1, converged=converged,
               ll=rbind(ll1, ll2), init=a, haplos_lls=lls)
@@ -277,9 +277,9 @@ phaseSibFamily <- function(x, sibfam, chrom, tiles,
                 #message(sprintf("on loci number %d", min(loci)))
                 res <- emHaplotypeImpute(pgeno[loci, sibfam$progeny, drop=FALSE],
                                          fgeno[loci, , drop=FALSE],
-                                         sibfam$other_parents,
+                                         sibfam$other_parent,
                                          freqs[loci], ehet, ehom, na_thresh=na_thresh)
-                stopifnot(ncol(res$cluster) == length(other_parents))
+                stopifnot(ncol(res$cluster) == length(sibfam$other_parent))
                 # Store diagnostic information
                 res$nloci <- length(loci)
                 res$progeny_na <- sum(is.na(pgeno[loci, sibfam$progeny]))/length(pgeno[loci, sibfam$progeny])
@@ -327,11 +327,12 @@ function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE)
       return(NULL) # nothing to phase, either no progeny or too few
     }
     chroms <- names(x@tiles@tiles)# uses tile chromosome not slot @ranges!
-    setNames(lpfun(chroms, function(chr) {
-                     if (verbose) message(sprintf("phasing parent %d, chrom %s", par, chr))
+    setNames(lpfun(function(chr) {
+                     msg <- sprintf("phasing parent '%s', chrom %s", parname, chr)
+                     if (verbose) message(msg)
                      phaseSibFamily(x, sibfam, chr, tiles, ehet=ehet,
                                     ehom=ehom, na_thresh=na_thresh)
-                   }), chroms)
+                   }, chroms), chroms)
   }
   
   x@phased_parents <- lpfun(phaseFun, sibfams, names(sibfams))
