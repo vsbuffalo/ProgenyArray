@@ -323,7 +323,7 @@ function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE)
 
   phaseFun <- function(sibfam, parname) {
     if (is.null(sibfam)) {
-      warning(sprintf("phaseParents(): skipping parent '%s'; no sib family data"), parname)
+      warning(sprintf("phaseParents(): skipping parent '%s'; no sib family data", parname))
       return(NULL) # nothing to phase, either no progeny or too few
     }
     chroms <- names(x@tiles@tiles)# uses tile chromosome not slot @ranges!
