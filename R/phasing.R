@@ -320,6 +320,7 @@ function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE)
   # create sibling families, for all parents; filter out parents
   # that don't have sufficient children for phasing/imputation
   sibfams <- filterSibFamilies(allSibFamilies(x), min_child)
+  x@sibfams <- sibfams
 
   phaseFun <- function(sibfam, parname, i, n) {
     if (is.null(sibfam)) {
@@ -422,8 +423,8 @@ extractProgenyHaplotypes <- function(x, included_parents) {
     ncores <- getOption("mc.cores")
     mapfun <- if (!is.null(ncores) && ncores > 1) mcMap else Map
     setNames(mapfun(function(prog, p1, p2) {
-        par1 <- bindProgenyHaplotypes(pa, p1, prog)
-        par2 <- bindProgenyHaplotypes(pa, p2, prog)
+        par1 <- bindProgenyHaplotypes(x, p1, prog)
+        par2 <- bindProgenyHaplotypes(x, p2, prog)
         stopifnot(dim(par1) == dim(par2))
         stopifnot(nrow(par1) == length(refs))
         stopifnot(nrow(par2) == length(refs))
@@ -471,7 +472,7 @@ setMethod("phases", c(x="ProgenyArray"),
               # This is a bit crufty; lots of cruft to deal with indices
               # to grab names which should have passed earlier TODO
               vmessage("extracting all parent haplotypes... ")
-              parent_names <- colnames(parentGenotypes(x))
+              parent_names <- names(sibfams)
               all_chroms <- names(x@tiles@tiles)
               # get alleles at tile sites
               alts <- tileAlt(x)
@@ -526,7 +527,7 @@ setMethod("phases", c(x="ProgenyArray"),
 
               # now, we need to reconstruct each kid's phase
               vmessage("extracting all progeny haplotypes... ")
-              prog <- extractProgenyHaplotypes(x)
+              prog <- extractProgenyHaplotypes(x, )
               vmessage("done.\n")
               # get positions from tiles, bind everything together.
               pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]

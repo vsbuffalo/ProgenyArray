@@ -35,6 +35,7 @@ setClass("PhasingTiles",
 #' @slot phased_parents a list of parents' phased tiles for all chromosomes
 #' @slot phased_parents_metadata a list of phasing parameters
 #' @slot tiles a list of tiles for all chromosomes
+#' @slot sibfams a list of sibling families for all phased parents
 #'
 #' @exportClass ProgenyArray
 setClass("ProgenyArray",
@@ -53,6 +54,7 @@ setClass("ProgenyArray",
              lodcutoff="numeric",
              # list of lists of lists (parents, chroms, and tiles)
              phased_parents="list",
+             sibfams="list",
              phased_parents_metadata="list",
              tiles="PhasingTiles",
              ligation="integer"),
@@ -66,6 +68,7 @@ setClass("ProgenyArray",
              parents=data.frame(),
              lodcutoff=NA_real_,
              phased_parents=list(),
+             sibfams=list(),
              phased_parents_metadata=list(),
              tiles=new('PhasingTiles'),
              ligation=NA_integer_),
