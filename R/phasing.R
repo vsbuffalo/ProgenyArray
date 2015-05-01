@@ -321,21 +321,22 @@ function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE)
   # that don't have sufficient children for phasing/imputation
   sibfams <- filterSibFamilies(allSibFamilies(x), min_child)
 
-  phaseFun <- function(sibfam, parname) {
+  phaseFun <- function(sibfam, parname, i, n) {
     if (is.null(sibfam)) {
       warning(sprintf("phaseParents(): skipping parent '%s'; no sib family data", parname))
       return(NULL) # nothing to phase, either no progeny or too few
     }
     chroms <- names(x@tiles@tiles)# uses tile chromosome not slot @ranges!
     setNames(lpfun(function(chr) {
-                     msg <- sprintf("phasing parent '%s', chrom %s", parname, chr)
+                     msg <- sprintf("phasing parent '%s' (%d of %d), chrom %s", parname, i, n, chr)
                      if (verbose) message(msg)
                      phaseSibFamily(x, sibfam, chr, tiles, ehet=ehet,
                                     ehom=ehom, na_thresh=na_thresh)
                    }, chroms), chroms)
   }
   
-  x@phased_parents <- lpfun(phaseFun, sibfams, names(sibfams))
+  x@phased_parents <- lpfun(phaseFun, sibfams, names(sibfams),
+                            seq_along(sibfams), length(sibfams))
 
   names(x@phased_parents) <- colnames(parentGenotypes(x))
   x@phased_parents_metadata <- phasingMetadata(tiles, ehet, ehom, na_thresh)
