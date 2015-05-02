@@ -12,6 +12,7 @@ Imports:
     methods,
     Biobase,
     Rcpp,
+    dplyr,
     magrittr,
     RcppEigen,
     reshape2,
