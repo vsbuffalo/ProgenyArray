@@ -193,26 +193,6 @@ setMethod("granges",
             return(x@ranges)
           })
 
-#' Accessor for alterate alleles from a ProgenyArray object
-#'
-#' @param x a ProgenyArray object
-#' @export
-setMethod("alt",
-          c(x="ProgenyArray"),
-          function(x) {
-            return(x@alt)
-          })
-
-#' Accessor for reference alleles from a ProgenyArray object
-#'
-#' @param x a ProgenyArray object
-#' @export
-setMethod("ref",
-          c(x="ProgenyArray"),
-          function(x) {
-            return(x@ref)
-          })
-
 #' Return progeny sample names
 #'
 #' @param x a ProgenyArray object

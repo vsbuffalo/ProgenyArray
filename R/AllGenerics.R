@@ -9,18 +9,6 @@ setGeneric("isSelfed", function(x) {
            standardGeneric("isSelfed")
              })
 
-#' Accessor for alternate alleles
-#'
-setGeneric("alt", function(x) {
-           standardGeneric("alt")
-             })
-
-#' Accessor for reference alleles
-#'
-setGeneric("ref", function(x) {
-           standardGeneric("ref")
-             })
-
 #' Accessor for fathers (returning indices or names)
 #'
 setGeneric("fathers", function(x, names=TRUE) {

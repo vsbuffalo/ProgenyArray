@@ -39,5 +39,7 @@ An S4 class that stores genotyping data from a progeny array design.
 \item{\code{phased_parents_metadata}}{a list of phasing parameters}
 
 \item{\code{tiles}}{a list of tiles for all chromosomes}
+
+\item{\code{sibfams}}{a list of sibling families for all phased parents}
 }}
 
