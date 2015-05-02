@@ -472,7 +472,7 @@ setMethod("phases", c(x="ProgenyArray"),
               # This is a bit crufty; lots of cruft to deal with indices
               # to grab names which should have passed earlier TODO
               vmessage("extracting all parent haplotypes... ")
-              parent_names <- names(sibfams)
+              parent_names <- names(x@sibfams)
               all_chroms <- names(x@tiles@tiles)
               # get alleles at tile sites
               alts <- tileAlt(x)
@@ -527,7 +527,8 @@ setMethod("phases", c(x="ProgenyArray"),
 
               # now, we need to reconstruct each kid's phase
               vmessage("extracting all progeny haplotypes... ")
-              prog <- extractProgenyHaplotypes(x, )
+              inc_pars <- names(x@sibfams)[!sapply(x@sibfams, is.null)]
+              prog <- extractProgenyHaplotypes(x, inc_pars)
               vmessage("done.\n")
               # get positions from tiles, bind everything together.
               pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
