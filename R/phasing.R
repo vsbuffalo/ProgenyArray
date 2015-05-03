@@ -539,7 +539,7 @@ setMethod("phases", c(x="ProgenyArray"),
               par_bind <- do.call(cbind, pars)
               if (include_ll)
                   return(cbind(pos, ll, par_bind, prog_bind, stringsAsFactors=FALSE))
-              cbind(pos, pars_bind, prog_bind, stringsAsFactors=FALSE)
+              cbind(pos, par_bind, prog_bind, stringsAsFactors=FALSE)
           })
 
 writePhases <- function(x, file) {
