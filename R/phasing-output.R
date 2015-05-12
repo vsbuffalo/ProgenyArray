@@ -200,14 +200,15 @@ setMethod("phases", c(x="ProgenyArray"),
                             do.call(cbind, all_pars_for_chrom[!sapply(all_pars_for_chrom, is.null)])
                           })
               vmessage("done.\n")
+            }
 
-              # now, we need to reconstruct each kid's phase
-              vmessage("extracting all progeny haplotypes... ")
-              inc_pars <- names(x@sibfams)[!sapply(x@sibfams, is.null)]
-              prog <- extractProgenyHaplotypes(x, inc_pars)
-              vmessage("done.\n")
-              # get positions from tiles, bind everything together.
-              pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
-              pos <- setNames(pos, c("chr", "position"))
-              list(pos=pos, ll=ll, prog=prog, pars=pars)
+            # now, we need to reconstruct each kid's phase
+            vmessage("extracting all progeny haplotypes... ")
+            inc_pars <- names(x@sibfams)[!sapply(x@sibfams, is.null)]
+            prog <- extractProgenyHaplotypes(x, inc_pars)
+            vmessage("done.\n")
+            # get positions from tiles, bind everything together.
+            pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
+            pos <- setNames(pos, c("chr", "position"))
+            list(pos=pos, ll=ll, prog=prog, pars=pars)
           })
