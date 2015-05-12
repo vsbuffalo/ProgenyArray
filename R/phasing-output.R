@@ -154,51 +154,52 @@ setMethod("phases", c(x="ProgenyArray"),
 
             pars <- lpfun(seq_along(all_chroms), function(chrom_i) {
                        chrom_name <- all_chroms[chrom_i]
-                       all_pars_for_chrom <- lapply(seq_along(x@phased_parents),
-                                                    function(parent_i) {
-                                                      parent <- x@phased_parents[[parent_i]]
-                                                      this_chrom <- parent[[chrom_i]] 
-                                                      if (is.null(parent)) return(NULL) # didn't phase this parent for some reason
-                                                      o <- do.call(rbind, lapply(seq_along(this_chrom),
-                                                         function(tile_i) {
-                                                           tile <- x@tiles@tiles[[chrom_i]][[tile_i]]
-                                                           phases <- this_chrom[[tile_i]] # for this tile
-                                                           par_haps <- encodeHaplotype(phases$haplos[, 1],
-                                                                                       phases$haplos[, 2],
-                                                                                       alleles[tile, ])
-                                                           out <- as.data.frame(cbind(par_haps))
-                                                           colnames(out) <- parent_names[parent_i]
-                                                           out
-                                                         }))
-                                                      return(as.data.frame(o))
-                                                    })
+                       all_pars_for_chrom <- lapply(seq_along(x@phased_parents), function(parent_i) {
+                           parent <- x@phased_parents[[parent_i]]
+                           this_chrom <- parent[[chrom_i]] 
+                           if (is.null(parent)) return(NULL) # didn't phase this parent for some reason
+                           o <- do.call(rbind, lapply(seq_along(this_chrom), function(tile_i) {
+                               tile <- x@tiles@tiles[[chrom_i]][[tile_i]]
+                               phases <- this_chrom[[tile_i]] # for this tile
+                               par_haps <- encodeHaplotype(phases$haplos[, 1],
+                                                           phases$haplos[, 2],
+                                                           alleles[tile, ])
+                               out <- as.data.frame(cbind(par_haps))
+                               colnames(out) <- parent_names[parent_i]
+                               out
+                             }))
+                           return(as.data.frame(o))
+                         })
                        do.call(cbind, all_pars_for_chrom[!sapply(all_pars_for_chrom, is.null)])
-              vmessage("done.\n")
+                     })
+            vmessage("done.\n")
 
-              if (include_ll) {
-                  vmessage("extracting all parent likelihoods... ")
-                  # TODO: could be cleaned up with parent/chrom/tile iterator
-                  ll <- lpfun(seq_along(x@phased_parents), function(parent_i) {
-                     parent <- x@phased_parents[[parent_i]]
-                     if (is.null(parent)) return(NULL) # didn't phase this parent for some reason
-                     do.call(rbind, lapply(seq_along(parent), function(chrom_i) {
-                         chrom_name <- all_chroms[chrom_i]
-                         this_chrom <- parent[[chrom_i]]
-                         do.call(rbind, lapply(seq_along(this_chrom), function(tile_i) {
-                             tile <- x@tiles@tiles[[chrom_i]][[tile_i]]
-                             phases <- this_chrom[[tile_i]] # for this tile
-                             ll0 <- apply(phases$haplos_ll[[1]], 1, llratio)
-                             ll1 <- apply(phases$haplos_ll[[2]], 1, llratio)
-                             pn <- paste(c("ll0", "ll1"),
-                                         parent_names[parent_i], sep="_")
-                             out <- cbind(ll0, ll1)
-                             colnames(out) <- pn
-                             out
-                         }))
-                     }))
-                 })
-                 vmessage("done.\n")
-              }
+            ll <- NULL # in case not included; consistent list object out
+            if (include_ll) {
+              vmessage("extracting all parent likelihoods... ")
+              # TODO: could be cleaned up with parent/chrom/tile iterator
+              ll <- lpfun(seq_along(all_chroms), function(chrom_i) {
+                            chrom_name <- all_chroms[chrom_i]
+                            all_pars_for_chrom <- lapply(seq_along(x@phased_parents), function(parent_i) {
+                                parent <- x@phased_parents[[parent_i]]
+                                this_chrom <- parent[[chrom_i]] 
+                                if (is.null(parent)) return(NULL) # didn't phase this parent for some reason
+                                
+                                do.call(rbind, lapply(seq_along(this_chrom), function(tile_i) {
+                                    tile <- x@tiles@tiles[[chrom_i]][[tile_i]]
+                                    phases <- this_chrom[[tile_i]] # for this tile
+                                    ll0 <- apply(phases$haplos_ll[[1]], 1, llratio)
+                                    ll1 <- apply(phases$haplos_ll[[2]], 1, llratio)
+                                    pn <- paste(c("ll0", "ll1"),
+                                                parent_names[parent_i], sep="_")
+                                    out <- cbind(ll0, ll1)
+                                    colnames(out) <- pn
+                                    out
+                                  }))
+                              })
+                            do.call(cbind, all_pars_for_chrom[!sapply(all_pars_for_chrom, is.null)])
+                          })
+              vmessage("done.\n")
 
               # now, we need to reconstruct each kid's phase
               vmessage("extracting all progeny haplotypes... ")
@@ -208,22 +209,5 @@ setMethod("phases", c(x="ProgenyArray"),
               # get positions from tiles, bind everything together.
               pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
               pos <- setNames(pos, c("chr", "position"))
-              # bind all progeny phases together
-              prog_bind <- do.call(cbind, prog)
-              # bind all parent phases together
-              par_bind <- do.call(cbind, pars)
-              if (include_ll)
-                  return(cbind(pos, ll, par_bind, prog_bind, stringsAsFactors=FALSE))
-              cbind(pos, par_bind, prog_bind, stringsAsFactors=FALSE)
+              list(pos=pos, ll=ll, prog=prog, pars=pars)
           })
-
-#' Write all phases to a gzipped file
-#'
-#' @param x a ProgenyArray object
-#' @param file outpufile filename (add '.gz' suffix for compression)
-#' @export
-writePhases <- function(x, file) {
-    if (regexpr(".*\\.gz", file) != -1)
-        file <- gzfile(file)
-    write.table(x, file, sep="\t", col.names=TRUE, row.names=FALSE, quote=FALSE)
-}
