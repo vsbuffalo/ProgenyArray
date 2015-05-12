@@ -152,6 +152,10 @@ setMethod("phases", c(x="ProgenyArray"),
             all_chroms <- names(x@tiles@tiles)
             inc_pars <- names(x@sibfams)[!sapply(x@sibfams, is.null)]
 
+            lpfun <- lapply # to support parallel in future; currently this is
+            # disabled as shared objects cause memory issues for large
+            # ProgenyArray objects
+
             pars <- lpfun(seq_along(all_chroms), function(chrom_i) {
                        chrom_name <- all_chroms[chrom_i]
                        all_pars_for_chrom <- lapply(seq_along(x@phased_parents), function(parent_i) {
