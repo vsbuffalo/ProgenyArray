@@ -84,7 +84,12 @@ bindProgenyHaplotypes <- function(x, parent, progeny) {
     }) 
     out
 }
-extractProgenyHaplotypes <- function(x, included_parents) {
+extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
+  vmessage <- function(x) {
+    if (verbose)
+      message(x, appendLF=FALSE)
+  }
+ 
   pars <- parents(x, use_names=TRUE)
   # only keep those parents with full sib fams
   kp <- pars$parent_1 %in% included_parents & pars$parent_2 %in% included_parents
@@ -114,7 +119,17 @@ extractProgenyHaplotypes <- function(x, included_parents) {
                   # by chrom:
                   Map(function(p1, p2, chrom_alleles) encodeHaplotype(p1, p2, chrom_alleles), par1, par2, alleles)
                 }, progeny, parent_1, parent_2, seq_along(progeny))
-  out
+
+  # now, collate these into a list of chrom by progeny
+  all_chroms <- names(x@tiles@tiles)
+  collated_out <- vector('list', length(all_chroms))
+  vmessage("collating progeny haplotypes into lists by chromosome... ")
+  for (chrom_i in seq_along(all_chroms)) {
+    vmessage(sprintf("  collating chromosome number %d... ", chrom_i))
+    collated_out[[chrom_i]] <- lapply(out, '[[', chrom_i)
+  }
+  vmessage("done.\n")
+  collated_out
 }
 
 #' Merge phasing data
@@ -143,7 +158,7 @@ setMethod("phases", c(x="ProgenyArray"),
             # This is a bit crufty; lots of cruft to deal with indices to grab
             # names which should have passed earlier TODO might be good to
             # refactor into separate functions at some point.
-            vmessage("binding all alleles together...")
+            vmessage("binding all alleles together... ")
             # get alleles at tile sites
             alleles <- getTileAlleles(x)
             vmessage("done.\n")
@@ -209,10 +224,12 @@ setMethod("phases", c(x="ProgenyArray"),
             # now, we need to reconstruct each kid's phase
             vmessage("extracting all progeny haplotypes... ")
             inc_pars <- names(x@sibfams)[!sapply(x@sibfams, is.null)]
-            prog <- extractProgenyHaplotypes(x, inc_pars)
+            prog <- extractProgenyHaplotypes(x, inc_pars, verbose=verbose)
             vmessage("done.\n")
             # get positions from tiles, bind everything together.
             pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
             pos <- setNames(pos, c("chr", "position"))
-            list(pos=pos, ll=ll, prog=prog, pars=pars)
+            pos_by_chroms <- split(pos, pos$chr)
+            list(pos=pos_by_chroms, ll=ll, prog=prog, pars=pars)
+
           })
