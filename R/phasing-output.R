@@ -132,6 +132,12 @@ extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
   collated_out
 }
 
+tileCol <- function(x) {
+  # make a vector of tile numbers
+  tiles <- x@tiles@tiles
+  lapply(tiles, function(x) unlist(lapply(seq_along(x), function(i) rep(i, length(x[[i]])))))
+}
+
 #' Merge phasing data
 #'
 #' @param x a ProgenyArray object with phased parents
@@ -230,6 +236,7 @@ setMethod("phases", c(x="ProgenyArray"),
             pos <- x@tiles@info$smoothed_genetic_map[, c("seqnames", "position")]
             pos <- setNames(pos, c("chr", "position"))
             pos_by_chroms <- split(pos, pos$chr)
-            list(pos=pos_by_chroms, ll=ll, prog=prog, pars=pars)
+            tiles <- tileCol(x)
+            list(pos=pos_by_chroms, tiles=tiles, ll=ll, prog=prog, pars=pars)
 
           })
