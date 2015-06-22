@@ -69,7 +69,7 @@ encodeHaplotype <- function(hap1, hap2, alleles=NULL) {
 
 bindProgenyHaplotypes <- function(x, parent, progeny) {
     # create a haplotype for a progeny given the parent's phased haplotypes
-    # unlist; not sapply; simplify2array screw everything up
+    # unlist, not sapply; simplify2array screw everything up
     all_chroms <- names(x@tiles@tiles)
     getProgenyHaplotypeType <- function(tile) {
             # loop through all tiles of one chromosome
@@ -84,11 +84,42 @@ bindProgenyHaplotypes <- function(x, parent, progeny) {
     }) 
     out
 }
-extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
+
+createSelfedHaplotypeCombinations <- function(haplos) {
+  # for two sets of imputed haplotypes 0, 1, create a set of haplotype
+  # combinations that could be inherited in selfed individuals, 00, 01, 11 for
+  # ML checking.
+  list(haplos[, c(0, 0)], haplos[, c(0, 1)], haplos[, c(1, 1)])
+}
+
+bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
+  # infer the correct pair of haplotypes for a selfed individual, using ML
+  # approach.
+  all_chroms <- names(x@tiles@tiles)
+  # create haps for all chroms
+  all_haps <- lapply(all_chroms, function(chrom) {
+    lapply(x@phased_parents[[parent]][[chrom]], createSelfedHaplotypeCombinations)
+  })
+
+  # log likelihoods of observed progeny genotypes under each of the selfing
+  # combinations
+  prog_geno <- progenyGenotypes(x)[, progeny]
+  haplo_ll <- sapply(all_haps, function(haps) {
+                         parent_geno <- rowSums(haps)
+                         # calculate log likelihood across loci
+                         sum(log(error_matrix[cbind(parent_geno, prog_geno)]))
+                       })
+  which_self_hap <- which.max(haplo_ll)
+  all_haps[[which_self_hap]]
+}
+
+extractProgenyHaplotypes <- function(x, included_parents, ehet, ehom, verbose=TRUE) {
   vmessage <- function(x) {
     if (verbose)
       message(x, appendLF=FALSE)
   }
+
+  ERROR_MAT <- genotypingErrorMatrix(ehet, ehom)
  
   pars <- parents(x, use_names=TRUE)
   # only keep those parents with full sib fams
@@ -110,13 +141,26 @@ extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
   n <- length(progeny)
   out <- mapfun(function(prog, p1, p2, i) {
                   message(sprintf("extracting progeny haplotypes for '%s' (parents: '%s' + '%s') %d of %d", prog, p1, p2, i, n))
-                  # prog, p1, and p2 are names of progeny and both parents
-                  par1 <- bindProgenyHaplotypes(x, p1, prog)
-                  par2 <- bindProgenyHaplotypes(x, p2, prog)
-                  # par1 and par2 are lists (of chromsoomes) of parent haplotypes for each progeny
-                  # these are then bound together with encodeHaplotype
-                  #stopifnot(all(sapply(par1, length) == sapply(par2, length)))
-                  # by chrom:
+                  ## new routine for selfed progeny -- can't rely on cluster responsibility probs
+                  is_selfed <- p1 == p2
+                  if (is_selfed) {
+                    ## evaluate the three haplotypes using ML to find most
+                    ## likely one. This is identical to creating parent
+                    ## genotypes from the reconstructed haplotypes and finding
+                    ## the most likely parent.
+                    browser()
+                    par_self <- bindSelfedProgenyHaplotypes(x, p1, prog, ERROR_MAT)
+                    browser()
+                  } else {
+                    ### not selfed
+                    # prog, p1, and p2 are names of progeny and both parents
+                    par1 <- bindProgenyHaplotypes(x, p1, prog)
+                    par2 <- bindProgenyHaplotypes(x, p2, prog)
+                    # par1 and par2 are lists (of chromsoomes) of parent haplotypes for each progeny
+                    # these are then bound together with encodeHaplotype
+                    #stopifnot(all(sapply(par1, length) == sapply(par2, length)))
+                    # by chrom:
+                  }
                   Map(function(p1, p2, chrom_alleles) encodeHaplotype(p1, p2, chrom_alleles), par1, par2, alleles)
                 }, progeny, parent_1, parent_2, seq_along(progeny))
 
