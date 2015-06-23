@@ -98,7 +98,9 @@ bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
   all_chroms <- names(x@tiles@tiles)
   # create haps for all chroms
   all_haps <- lapply(all_chroms, function(chrom) {
-    lapply(x@phased_parents[[parent]][[chrom]], createSelfedHaplotypeCombinations)
+                       lapply(x@phased_parents[[parent]][[chrom]], function(x) {
+                                createSelfedHaplotypeCombinations(x$haplos)
+                              })
   })
 
   # log likelihoods of observed progeny genotypes under each of the selfing
@@ -109,6 +111,7 @@ bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
                          # calculate log likelihood across loci
                          sum(log(error_matrix[cbind(parent_geno, prog_geno)]))
                        })
+  browser()
   which_self_hap <- which.max(haplo_ll)
   all_haps[[which_self_hap]]
 }
@@ -149,9 +152,7 @@ extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
                     ## likely one. This is identical to creating parent
                     ## genotypes from the reconstructed haplotypes and finding
                     ## the most likely parent.
-                    browser()
                     par_self <- bindSelfedProgenyHaplotypes(x, p1, prog, ERROR_MAT)
-                    browser()
                   } else {
                     ### not selfed
                     # prog, p1, and p2 are names of progeny and both parents
