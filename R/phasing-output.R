@@ -113,13 +113,14 @@ bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
   all_haps[[which_self_hap]]
 }
 
-extractProgenyHaplotypes <- function(x, included_parents, ehet, ehom, verbose=TRUE) {
+extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
   vmessage <- function(x) {
     if (verbose)
       message(x, appendLF=FALSE)
   }
 
-  ERROR_MAT <- genotypingErrorMatrix(ehet, ehom)
+  ERROR_MAT <- genotypingErrorMatrix(x@phased_parents_metadata$ehet,
+                                     x@phased_parents_metadata$ehom)
  
   pars <- parents(x, use_names=TRUE)
   # only keep those parents with full sib fams
