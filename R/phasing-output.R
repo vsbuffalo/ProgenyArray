@@ -108,7 +108,7 @@ bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
   prog_geno <- progenyGenotypes(x)[, progeny]
   haplo_ll <- lapply(all_haps, function(haps) {
                        sapply(haps, function(hap) {
-                         parent_geno <- rowSums(hap)
+                         parent_geno <- lapply(hap, rowSums)
                          # calculate log likelihood across loci
                          sum(log(error_matrix[cbind(parent_geno, prog_geno)]))
                        })
