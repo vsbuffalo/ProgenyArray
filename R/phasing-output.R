@@ -89,7 +89,7 @@ createSelfedHaplotypeCombinations <- function(haplos) {
   # for two sets of imputed haplotypes 0, 1, create a set of haplotype
   # combinations that could be inherited in selfed individuals, 00, 01, 11 for
   # ML checking.
-  list(haplos[, c(0, 0)], haplos[, c(0, 1)], haplos[, c(1, 1)])
+  list(haplos[, c(1, 1)], haplos[, c(1, 2)], haplos[, c(2, 2)])
 }
 
 bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
