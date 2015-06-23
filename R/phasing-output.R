@@ -107,10 +107,14 @@ bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
   # combinations
   prog_geno <- progenyGenotypes(x)[, progeny]
   haplo_ll <- lapply(all_haps, function(haps) {
+                       # across chromosomes
                        sapply(haps, function(hap) {
-                         parent_geno <- lapply(hap, rowSums)
-                         # calculate log likelihood across loci
-                         sum(log(error_matrix[cbind(parent_geno, prog_geno)]))
+                         # across tiles
+                         # calculate genotype likelihoods across haplotype combinations
+                         parent_geno <- lapply(hap, function(hapcomb) {
+                           # calculate log likelihood across loci
+                           sum(log(error_matrix[cbind(rowSums(hapcomb), prog_geno)]))
+                       })
                        })
                      })
   which_self_hap <- which.max(haplo_ll)
