@@ -166,6 +166,12 @@ extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
                     ## genotypes from the reconstructed haplotypes and finding
                     ## the most likely parent.
                     par_self <- bindSelfedProgenyHaplotypes(x, p1, prog, ERROR_MAT)
+                    par1 <- lapply(par_self$haps, function(chrom) {
+                                     unlist(lapply(chrom, function(tile) tile[, 1]))
+                                   })
+                    par2 <- lapply(par_self$haps, function(chrom) {
+                                     unlist(lapply(chrom, function(tile) tile[, 2]))
+                                   })
                   } else {
                     ### not selfed
                     # prog, p1, and p2 are names of progeny and both parents
