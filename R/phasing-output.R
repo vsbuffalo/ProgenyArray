@@ -111,13 +111,19 @@ bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
                        lapply(haps, function(hap) {
                          # across tiles
                          # calculate genotype likelihoods across haplotype combinations
-                         ll <- sapply(hap, function(hapcomb) {
+                         sapply(hap, function(hapcomb) {
                            # calculate log likelihood across loci
                            sum(log(error_matrix[cbind(rowSums(hapcomb, na.rm=TRUE), prog_geno)]), na.rm=TRUE)
                          })
-                         hap[[which.max(ll)]]
                        })
                      })
+  max_ll_haps <- lapply(haplo_ll, function(chrom) {
+                          lapply(chrom, function(tile) {
+                                   tile[[which.max(tile)]]
+                                 })
+                        })
+  out <- list(haplo_ll=haplo_ll, haps=max_ll_haps)
+  browser()
 }
 
 extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
