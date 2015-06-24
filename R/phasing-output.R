@@ -106,24 +106,27 @@ bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
   # log likelihoods of observed progeny genotypes under each of the selfing
   # combinations
   prog_geno <- progenyGenotypes(x)[, progeny]
-  haplo_ll <- lapply(all_haps, function(haps) {
+  haplo_ll <- lapply(seq_along(all_haps), function(chrom_i) {
                        # across chromosomes
-                       lapply(haps, function(hap) {
+                       lapply(seq_along(all_haps[[chrom_i]]), function(tile_i) {
                          # across tiles
                          # calculate genotype likelihoods across haplotype combinations
-                         sapply(hap, function(hapcomb) {
+                         haps <- all_haps[[chrom_i]][[tile_i]] # get haplotype selfed combinations
+                         sapply(haps, function(hapcomb) {
                            # calculate log likelihood across loci
-                           sum(log(error_matrix[cbind(rowSums(hapcomb, na.rm=TRUE), prog_geno)]), na.rm=TRUE)
+                           # get progeny genotypes for this tile
+                           pgeno <- prog_geno[x@tiles@tiles[[chrom_i]][[tile_i]]]
+                           sum(log(error_matrix[cbind(rowSums(hapcomb, na.rm=TRUE)+1L, pgeno+1L)]), na.rm=TRUE)
                          })
                        })
                      })
-  max_ll_haps <- lapply(haplo_ll, function(chrom) {
-                          lapply(chrom, function(tile) {
-                                   tile[[which.max(tile)]]
+  max_ll_haps <- lapply(seq_along(all_haps), function(chrom_i) {
+                          lapply(seq_along(all_haps[[chrom_i]]), function(tile_i) {
+                                   all_haps[[chrom_i]][[tile_i]][[which.max(haplo_ll[[chrom_i]][[tile_i]])]]
                                  })
                         })
   out <- list(haplo_ll=haplo_ll, haps=max_ll_haps)
-  browser()
+  out
 }
 
 extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
