@@ -92,7 +92,7 @@ createSelfedHaplotypeCombinations <- function(haplos) {
   list(haplos[, c(1, 1)], haplos[, c(1, 2)], haplos[, c(2, 2)])
 }
 
-bindSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
+inferSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
   # infer the correct pair of haplotypes for a selfed individual, using ML
   # approach.
   all_chroms <- names(x@tiles@tiles)
@@ -165,7 +165,8 @@ extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
                     ## likely one. This is identical to creating parent
                     ## genotypes from the reconstructed haplotypes and finding
                     ## the most likely parent.
-                    par_self <- bindSelfedProgenyHaplotypes(x, p1, prog, ERROR_MAT)
+                    par_self <- inferSelfedProgenyHaplotypes(x, p1, prog, ERROR_MAT)
+                    # TODO: definitely not the most efficient thing to do...
                     par1 <- lapply(par_self$haps, function(chrom) {
                                      unlist(lapply(chrom, function(tile) tile[, 1]))
                                    })
