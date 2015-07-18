@@ -138,7 +138,9 @@ setGeneric("freqs<-", function(x, value) {
 #' Phase all parents data in a ProgenyArray
 #'
 setGeneric("phaseParents", function(x, tiles, ehet=0.8, ehom=0.1,
-                                    na_thresh=0.8, min_child=8, verbose=TRUE) {
+                                    na_thresh=0.8, min_child=8,
+                                    ignore_selfs=TRUE,
+                                    verbose=TRUE) {
     standardGeneric("phaseParents")
 })
 

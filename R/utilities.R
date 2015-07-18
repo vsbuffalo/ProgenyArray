@@ -51,7 +51,7 @@ alleleFreqs <- function(x, min=FALSE) {
 #' @export
 setMethod("calcFreqs", "ProgenyArray",
           function(x) {
-            x@freqs <- alleleFreqs(parentGenotypes(x))
+            x@freqs <- alleleFreqs(parentGenotypes(x), TRUE)
             x
 })
 

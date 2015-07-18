@@ -112,15 +112,23 @@ inferSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
                          # across tiles
                          # calculate genotype likelihoods across haplotype combinations
                          haps <- all_haps[[chrom_i]][[tile_i]] # get haplotype selfed combinations
-                         sapply(haps, function(hapcomb) {
+
+                         #browser()
+                         pgeno <- prog_geno[x@tiles@tiles[[chrom_i]][[tile_i]]]
+                         stopifnot(length(pgeno) == nrow(haps))
+                         sapply(seq_along(haps), function(hi) {
+                                  #browser()
+                                hapcomb <- haps[[hi]]
+                                prob <- c(0.25, 0.5, 0.25)[hi]
                            # calculate log likelihood across loci
                            # get progeny genotypes for this tile
-                           pgeno <- prog_geno[x@tiles@tiles[[chrom_i]][[tile_i]]]
                            sum(log(error_matrix[cbind(rowSums(hapcomb, na.rm=TRUE)+1L, pgeno+1L)]), na.rm=TRUE)
                          })
+                         
                        })
                      })
   max_ll_haps <- lapply(seq_along(all_haps), function(chrom_i) {
+                          # TODO: verify
                           lapply(seq_along(all_haps[[chrom_i]]), function(tile_i) {
                                    all_haps[[chrom_i]][[tile_i]][[which.max(haplo_ll[[chrom_i]][[tile_i]])]]
                                  })
@@ -166,6 +174,7 @@ extractProgenyHaplotypes <- function(x, included_parents, verbose=TRUE) {
                     ## genotypes from the reconstructed haplotypes and finding
                     ## the most likely parent.
                     par_self <- inferSelfedProgenyHaplotypes(x, p1, prog, ERROR_MAT)
+                    #browser()
                     # TODO: definitely not the most efficient thing to do...
                     par1 <- lapply(par_self$haps, function(chrom) {
                                      unlist(lapply(chrom, function(tile) tile[, 1]))

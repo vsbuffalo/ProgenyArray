@@ -103,6 +103,8 @@ reshapeHapLL <- function(lls_haps) {
 emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
                               free_pi=FALSE, na_thresh=0.8, init=NULL, extra=FALSE,
                               max_iter=60L, eps=1e-9) {
+  # TODO notes on output object.
+  
   # initialize EM pi and responsibility
   nloci <- length(pgeno)
   nind <- ncol(pgeno)
@@ -209,7 +211,7 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
 #' @param parent the parent to bring the half sib family
 #'
 #' @export
-sibFamily <- function(x, parent) {
+sibFamily <- function(x, parent, ignore_selfs) {
   pars <- parents(x)
   # This builds a full-sib family 
   tmp <- pars[pars$parent_1 == parent | pars$parent_2 == parent,
@@ -223,14 +225,18 @@ sibFamily <- function(x, parent) {
       if (x[1] == x[2]) return(parent) # selfed ind; return any parent
       setdiff(x, parent)
     })
-  data.frame(focal_parent=parent, other_parent=other_parents, progeny=prog_i)
+  out <- data.frame(focal_parent=parent, other_parent=other_parents, progeny=prog_i)
+  if (ignore_selfs) {
+    return(out[out$focal_parent != out$other_parent, ])
+  }
+  out
 }
 
 #' Get all sibling families for a ProgenyArray object
-allSibFamilies <- function(x) {
+allSibFamilies <- function(x, ignore_selfs=FALSE) {
   pars <- seq_len(ncol(parentGenotypes(x)))
   parnames <- colnames(parentGenotypes(x))
-  setNames(lapply(pars, function(p) sibFamily(x, p)), parnames)
+  setNames(lapply(pars, function(p) sibFamily(x, p, ignore_selfs)), parnames)
 }
 
 #' Filter sibling families by minimum number of offspring
@@ -304,11 +310,14 @@ phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
 #' @param ehom homozygous error rate
 #' @param na_thresh how much missingness to tolerate before pruning individual
 #' @param min_child minimum number of children to include a parent for phasing
+#' @param ignore_selfs whether to ignore selfed individuals to avoid bias (should be true, unless debugging)
 #' @param verbose report status messages
 #'
 #' @export
 setMethod("phaseParents", c(x="ProgenyArray"),
-function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE) {
+          function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8,
+                   ignore_selfs=TRUE,
+                   verbose=TRUE) {
 
   ncores <- getOption("mc.cores")
   lpfun <- if (!is.null(ncores) && ncores > 1) mcMap else Map
@@ -319,7 +328,8 @@ function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8, verbose=TRUE)
   
   # create sibling families, for all parents; filter out parents
   # that don't have sufficient children for phasing/imputation
-  sibfams <- filterSibFamilies(allSibFamilies(x), min_child)
+  sibfams <- filterSibFamilies(allSibFamilies(x, ignore_selfs=ignore_selfs),
+                               min_child)
   x@sibfams <- sibfams
 
   phaseFun <- function(sibfam, parname, i, n) {
