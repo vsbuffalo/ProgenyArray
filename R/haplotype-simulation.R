@@ -37,7 +37,7 @@ haplotypes2NoisyGenotypes <- function(x, ehet, ehom, na_rate=0) {
 #'
 #' @return a list full of simulation data
 #' @export
-sibFamily <- function(nprogeny, nsites,
+simSibFamily <- function(nprogeny, nsites,
                       rates=c(selfing=0.5, halfsib=0.2, fullsib=0.3),
                       nfullsib_fathers=2, mom_inbred=FALSE,
                       father_F=0.1, ehet=0.8, ehom=0.1,
@@ -56,6 +56,7 @@ sibFamily <- function(nprogeny, nsites,
   # generate fathers, fullsib fathers + number of halfsib families
   nhalfsib_families <- sum(ind_type == "halfsib")
   nfullsib_families <- sum(ind_type == "fullsib")
+  
   parents <- createIndividuals(nfullsib_fathers+nhalfsib_families, freqs, father_F)
   parents <- c(list(mom), parents) # mom is potential father (selfing), kept in pos 1
 
@@ -76,7 +77,8 @@ sibFamily <- function(nprogeny, nsites,
   mother_gamete_i <- sample(1:2, nprogeny, replace=TRUE)
 
   # metadata dataframe to keep track of everything
-  d <- data.frame(type=ind_type, mother=1L, father=fathers,
+  d <- data.frame(progeny=seq_along(ind_type),
+                  type=ind_type, mother=1L, father=fathers,
                   mgamete=mother_gamete_i, fgamete=father_gamete_i)
   stopifnot(all(fathers[d$type == "selfed"] == 1))
   progeny <- mapply(function(mg, fg, which_father) {
@@ -86,9 +88,12 @@ sibFamily <- function(nprogeny, nsites,
                     }, mother_gamete_i, father_gamete_i, fathers,
                     SIMPLIFY=FALSE)
   genos <- haplotypes2NoisyGenotypes(progeny, ehet, ehom, na_rate)
+  colnames(genos) <- paste0("parent-", 1:ncol(genos))
 
   # parent genotypes
   parent_genos <- haplotypes2NoisyGenotypes(parents, ehet, ehom, na_rate)
+  colnames(parent_genos) <- paste0("parent-", 1:ncol(parent_genos))
+
   list(progeny=genos, metadata=d, freqs=freqs,
        haplos=parents, genos=parent_genos)
 }

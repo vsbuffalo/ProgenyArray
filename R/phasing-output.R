@@ -113,8 +113,8 @@ inferSelfedProgenyHaplotypes <- function(x, parent, progeny, error_matrix) {
                          # calculate genotype likelihoods across haplotype combinations
                          haps <- all_haps[[chrom_i]][[tile_i]] # get haplotype selfed combinations
 
-                         #browser()
                          pgeno <- prog_geno[x@tiles@tiles[[chrom_i]][[tile_i]]]
+                         if (chrom_i > 1 && tile_i > 5) browser()
                          stopifnot(length(pgeno) == nrow(haps))
                          sapply(seq_along(haps), function(hi) {
                                   #browser()

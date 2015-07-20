@@ -208,12 +208,13 @@ emHaplotypeImpute <- function(pgeno, fgeno, other_parents, freqs, ehet, ehom,
 #' Create a sibling family for a single parent.
 #'
 #' @param x a ProgenyArray object
-#' @param parent the parent to bring the half sib family
+#' @param parent the parent to bring the sib family
+#' @param ignore_selfs should we ignore selfed individuals?
 #'
 #' @export
 sibFamily <- function(x, parent, ignore_selfs) {
   pars <- parents(x)
-  # This builds a full-sib family 
+  # This builds a full-sib family
   tmp <- pars[pars$parent_1 == parent | pars$parent_2 == parent,
               c("progeny", "parent_1", "parent_2")]
   if (nrow(tmp) == 0) {
@@ -240,17 +241,33 @@ allSibFamilies <- function(x, ignore_selfs=FALSE) {
 }
 
 #' Filter sibling families by minimum number of offspring
-filterSibFamilies <- function(sibfamilies, min_child) {
+filterSibFamilies <- function(x, sibfamilies, min_child,
+                              remove_full_sibs=TRUE) {
   # parent_names is used for friendlier messages
   msg <- "filterSibFamilies(): parent %d ('%s') has fewer than %d offspring (%d); not including in phasing/imputation."
-  filtered_sibfams <- Map(function(x, n) {
-      if (is.null(x)) return(NULL)
-      if (nrow(x) < min_child) {
-        warning(sprintf(msg, x$focal_parent[1], n, min_child, nrow(x)))
+    filtered_sibfams <- Map(function(fam, n) {
+      if (is.null(fam)) return(NULL)
+      if (nrow(fam) < min_child) {
+        warning(sprintf(msg, fam$focal_parent[1], n, min_child, nrow(fam)))
         return(NULL)
       }
-      return(x)
+
+      if (remove_full_sibs) {
+        # get the individual with the least missingness
+        tmp <- lapply(split(fam, list(fam$focal_parent, fam$other_parent)),
+                 function(d) {
+                   miss <- colSums(is.na(progenyGenotypes(x)[, d$progeny, drop=FALSE]))
+                   d[which.min(miss), , drop=FALSE]
+               })
+        nofull <- do.call(rbind, tmp)
+        return(nofull)
+      }
+      
+      return(fam)
     }, sibfamilies, names(sibfamilies))
+
+  
+  
   return(filtered_sibfams)
 }
 
@@ -316,9 +333,9 @@ phasingMetadata <- function(tiles, ehet, ehom, na_thresh) {
 #' @export
 setMethod("phaseParents", c(x="ProgenyArray"),
           function(x, tiles, ehet=0.8, ehom=0.1, na_thresh=0.8, min_child=8,
-                   ignore_selfs=TRUE,
+                   ignore_selfs=TRUE, 
                    verbose=TRUE) {
-
+  no_full_sibs=FALSE ## for debugging
   ncores <- getOption("mc.cores")
   lpfun <- if (!is.null(ncores) && ncores > 1) mcMap else Map
   x@tiles <- tiles # add tiles to ProgenyArray Object
@@ -328,8 +345,10 @@ setMethod("phaseParents", c(x="ProgenyArray"),
   
   # create sibling families, for all parents; filter out parents
   # that don't have sufficient children for phasing/imputation
-  sibfams <- filterSibFamilies(allSibFamilies(x, ignore_selfs=ignore_selfs),
-                               min_child)
+  sibfams <- filterSibFamilies(x, allSibFamilies(x, ignore_selfs=ignore_selfs),
+                                              remove_full_sibs=no_full_sibs,
+                                              min_child)
+  #browser()
   x@sibfams <- sibfams
 
   phaseFun <- function(sibfam, parname, i, n) {
